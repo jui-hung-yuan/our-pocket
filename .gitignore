@@ -1,0 +1,31 @@
+# --- Real household data: never committed -----------------------------------
+# Only data/synthetic/ is tracked. Everything else under data/ stays local.
+data/*
+!data/synthetic/
+!data/README.md
+
+# --- Personal notes: job search, not part of the project ---------------------
+docs/private/
+
+# --- Secrets ------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- Python -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Editors / OS -------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/

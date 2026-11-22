@@ -1,0 +1,54 @@
+[project]
+name = "our-pocket"
+version = "0.1.0"
+description = "A trustworthy household ledger built from German bank and broker exports."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+    "sqlalchemy>=2.0.36",
+]
+
+[project.scripts]
+our-pocket = "our_pocket.interfaces.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0",
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/our_pocket"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "UP", "SIM", "RUF"]
+# Exception names say what happened (CommitBlocked, AccountNotFound); an Error suffix adds nothing.
+ignore = ["N818"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "db: needs a running Postgres (DATABASE_URL); skipped when unreachable",
+    "boundaries: layer/import rules (make boundaries)",
+]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src", "migrations"]
+strict = true
+warn_unreachable = true

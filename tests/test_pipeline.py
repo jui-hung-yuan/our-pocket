@@ -1,0 +1,172 @@
+"""End-to-end: synthetic export → extract → transform → stage (flags) → commit → ledger."""
+
+from decimal import Decimal
+
+import pytest
+from sqlalchemy import func, select
+
+from our_pocket.db.schema import account, import_flag, ledger_entry, raw_row, staged_row
+from our_pocket.etl.load import BatchStore, CommitBlocked, DuplicateFile, InvalidBatchState
+from our_pocket.etl.models import Account
+from our_pocket.etl.pipeline import ImportPipeline
+from our_pocket.etl.transform.trade_republic import COLUMNS_V1
+from our_pocket.services import AccountNotFound, AccountService, LedgerService
+from our_pocket.synthetic.trade_republic import SyntheticExport
+
+pytestmark = pytest.mark.db
+
+
+def _stage(conn, export: SyntheticExport, account: Account, name: str = "tr.csv") -> int:
+    return ImportPipeline(conn).run(export.to_csv_bytes(), name, account)
+
+
+def _count(conn, table, **where) -> int:
+    return conn.execute(
+        select(func.count()).select_from(table).where(*(table.c[k] == v for k, v in where.items()))
+    ).scalar_one()
+
+
+def test_happy_path_reaches_the_ledger_with_ground_truth_holdings(conn, tr_account, synthetic):
+    batch_id = _stage(conn, synthetic, tr_account)
+
+    report = BatchStore(conn).report(batch_id)
+    assert report.status == "staged"
+    assert (report.schema_id, report.schema_version, report.parser_version) == (
+        "trade_republic.transactions_csv", 1, "2",
+    )  # fmt: skip
+    assert report.row_count == len(synthetic.rows)
+    assert report.errors == 0
+    assert report.warnings > 0  # STOCKPERK: cash_semantics_unverified
+    assert _count(conn, ledger_entry) == 0, "staging must never touch the ledger"
+
+    with pytest.raises(CommitBlocked, match="warning"):
+        BatchStore(conn).commit(batch_id)
+
+    result = BatchStore(conn).commit(batch_id, accept_warnings=True)
+    assert (result.inserted, result.skipped_duplicates) == (len(synthetic.rows), 0)
+    assert BatchStore(conn).report(batch_id).status == "committed"
+
+    ledger = LedgerService(conn)
+    assert ledger.positions(tr_account.name) == synthetic.holdings
+    totals = ledger.totals_by_type(tr_account.name)
+    assert sum(n for n, _ in totals.values()) == len(synthetic.rows)
+    assert totals["bonus"][1] is None  # STOCKPERK: unverified cash semantics stay NULL
+
+    tax_column = [Decimal(r["tax"]) for r in synthetic.rows if r["tax"]]
+    taxes = ledger.taxes(tr_account.name)
+    assert sum(tax for _, tax in taxes.values()) == sum(tax_column)
+    assert taxes["tax_adjustment"][1] > 0  # refunds
+    assert totals["tax_adjustment"][1] == taxes["tax_adjustment"][1]
+    assert totals["tax_base"][1] == taxes["tax_base"][1]  # Vorabpauschale tax is cash
+
+
+def test_every_ledger_entry_traces_back_to_its_raw_row(conn, tr_account, synthetic):
+    batch_id = _stage(conn, synthetic, tr_account)
+    BatchStore(conn).commit(batch_id, accept_warnings=True)
+    rows = conn.execute(
+        select(ledger_entry.c.external_id, ledger_entry.c.amount, raw_row.c.data)
+        .join(staged_row, staged_row.c.id == ledger_entry.c.staged_row_id)
+        .join(raw_row, raw_row.c.id == staged_row.c.raw_row_id)
+    ).all()
+    assert len(rows) == len(synthetic.rows)
+    for external_id, amount, data in rows:
+        assert data["transaction_id"] == external_id
+        assert Decimal(data["amount"]) == amount
+        assert set(data) == set(COLUMNS_V1)
+
+
+def test_same_file_twice_is_refused(conn, tr_account, synthetic):
+    _stage(conn, synthetic, tr_account)
+    with pytest.raises(DuplicateFile):
+        _stage(conn, synthetic, tr_account)
+
+
+def test_overlapping_export_only_adds_new_rows(conn, tr_account, synthetic):
+    first = SyntheticExport(rows=synthetic.rows[:40], holdings={})
+    BatchStore(conn).commit(_stage(conn, first, tr_account, "jan.csv"), accept_warnings=True)
+
+    batch_id = _stage(conn, synthetic, tr_account, "full.csv")
+    report = BatchStore(conn).report(batch_id)
+    assert report.duplicate_count == 40
+    assert sum(f["code"] == "already_in_ledger" for f in report.flags) == 40
+
+    result = BatchStore(conn).commit(batch_id, accept_warnings=True)
+    assert (result.inserted, result.skipped_duplicates) == (len(synthetic.rows) - 40, 40)
+    assert _count(conn, ledger_entry) == len(synthetic.rows)
+    assert LedgerService(conn).positions() == synthetic.holdings
+
+
+def test_errors_block_commit_until_rejected_and_reimported(conn, tr_account, synthetic):
+    rows = [dict(r) for r in synthetic.rows]
+    rows[5]["amount"] = "not-a-number"
+    broken = SyntheticExport(rows=rows, holdings={})
+    batch_id = _stage(conn, broken, tr_account)
+
+    report = BatchStore(conn).report(batch_id)
+    assert report.errors == 1
+    [error] = [f for f in report.flags if f["severity"] == "error"]
+    assert (error["code"], error["line_number"], error["field"]) == (
+        "unparseable_value",
+        7,
+        "amount",
+    )
+
+    with pytest.raises(CommitBlocked, match="error"):
+        BatchStore(conn).commit(batch_id, accept_warnings=True)
+
+    BatchStore(conn).reject(batch_id, "amount column corrupted")
+    assert BatchStore(conn).report(batch_id).status == "rejected"
+    with pytest.raises(InvalidBatchState):
+        BatchStore(conn).commit(batch_id, accept_warnings=True)
+
+    # A rejected file may be staged again (e.g. after fixing the parser).
+    assert _stage(conn, broken, tr_account) != batch_id
+    assert _count(conn, ledger_entry) == 0
+
+
+def test_unknown_schema_is_rejected_at_intake(conn, tr_account):
+    content = (
+        b'"Booking Date","Value Date","Partner Name","Amount (EUR)"\n"2025-01-01","","x","1"\n'
+    )
+    batch_id = ImportPipeline(conn).run(content, "n26.csv", tr_account)
+    report = BatchStore(conn).report(batch_id)
+    assert report.status == "rejected"
+    assert report.schema_id is None
+    [flag] = report.flags
+    assert flag["code"] == "unknown_schema"
+    assert "closest known schema" in flag["message"]
+    assert _count(conn, raw_row, batch_id=batch_id) == 0
+
+
+def test_file_for_another_institution_is_rejected_at_intake(conn, synthetic):
+    accounts = AccountService(conn)
+    accounts.add("Giro", "trade_republic")
+    conn.execute(account.update().where(account.c.name == "Giro").values(institution="n26"))
+    batch_id = _stage(conn, synthetic, accounts.get("Giro"))
+    report = BatchStore(conn).report(batch_id)
+    assert report.status == "rejected"
+    assert [f["code"] for f in report.flags] == ["institution_mismatch"]
+
+
+def test_commit_is_once_only(conn, tr_account, synthetic):
+    batch_id = _stage(conn, synthetic, tr_account)
+    BatchStore(conn).commit(batch_id, accept_warnings=True)
+    with pytest.raises(InvalidBatchState):
+        BatchStore(conn).commit(batch_id, accept_warnings=True)
+    with pytest.raises(InvalidBatchState):
+        BatchStore(conn).reject(batch_id, "too late")
+
+
+def test_unknown_account(conn):
+    with pytest.raises(AccountNotFound):
+        AccountService(conn).get("nope")
+
+
+def test_flags_are_linked_to_staged_rows(conn, tr_account, synthetic):
+    batch_id = _stage(conn, synthetic, tr_account)
+    orphans = conn.execute(
+        select(func.count())
+        .select_from(import_flag)
+        .where(import_flag.c.batch_id == batch_id, import_flag.c.staged_row_id.is_(None))
+    ).scalar_one()
+    assert orphans == 0
