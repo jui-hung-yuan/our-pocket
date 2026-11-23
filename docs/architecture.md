@@ -22,7 +22,7 @@ flowchart TB
         PIPE["ImportPipeline"]
         EX["extract/<br/>Extractor → CsvExtractor"]
         REG["registry<br/>FormatRegistry"]
-        TR["transform/<br/>Transformer → TradeRepublicV1"]
+        TR["transform/<br/>Transformer → TradeRepublicV1, N26V1"]
         LD["load/<br/>BatchStore"]
         PIPE --> EX
         PIPE --> REG
@@ -52,7 +52,7 @@ Dependencies point **down only**. `tests/test_architecture.py` enforces it:
 | Package | May import | Must not import |
 |---|---|---|
 | `interfaces/` | everything below | — |
-| `services/` | `etl.models`, `etl.registry`, `db` | `interfaces` |
+| `services/` | `etl` (models, registry, load), `db` | `interfaces` |
 | `etl/` | `db` (only from `load/`) | `services`, `interfaces` |
 | `etl/extract/`, `etl/transform/` | `etl.models` | `db`, `sqlalchemy`, `services`, `interfaces` (they're **pure**) |
 | `db/` | `config` | anything above it |
@@ -124,6 +124,7 @@ classDiagram
         +schema_version
         +parser_version
         +columns
+        +account_column
         +fingerprint
         +transform(rows) list~ParsedRow~
         +transform_row(raw) ParsedRow
@@ -133,9 +134,7 @@ classDiagram
         #require(row, data, keys, why)
     }
     class TradeRepublicV1
-    class N26V1 {
-        <<next>>
-    }
+    class N26V1
     Transformer <|-- TradeRepublicV1
     Transformer <|-- N26V1
 
@@ -192,7 +191,7 @@ sign conventions, their type vocabularies. That's transformation. So:
 
 - **Extractor subclasses** = file formats: `CsvExtractor` now, `PdfExtractor` if PDFs come back
   (V2). A PDF extractor would be where an LLM or docling step lives.
-- **Transformer subclasses** = one institution at one schema version: `TradeRepublicV1`, then
+- **Transformer subclasses** = one institution at one schema version: `TradeRepublicV1`,
   `N26V1`. When Trade Republic changes its export, `TradeRepublicV2` is added and V1 stays, because
   old batches were read with it.
 - The **registry** connects them: the extractor computes the header fingerprint, and the registry
@@ -244,6 +243,12 @@ sequenceDiagram
     B->>DB: INSERT ledger_entry SELECT … FROM staged_row ON CONFLICT DO NOTHING
 ```
 
+**N26 (`our-pocket import n26.csv`, no `--account`):** `N26V1.account_column` is
+`"account name"`, so the pipeline groups rows by that column and looks up the account per group by
+`export_account_name` within the `--household` (D-018). Every group needs an account, and no
+group may have this file staged already (groups committed from it are skipped); only then is the
+whole file transformed once and each remaining group staged as its own batch.
+
 ## 5. Where data lives
 
 Each layer has its own Postgres schema (D-017).
@@ -253,18 +258,19 @@ Each layer has its own Postgres schema (D-017).
 | L0 file | `staging.import_batch` (sha256, signature) | `BatchStore` | audit |
 | L1 raw | `raw.raw_row`: append-only, enforced by a trigger | `BatchStore.stage` | re-parsing, audit |
 | L2 staged | `staging.staged_row`, `staging.import_flag` | `BatchStore.stage` | review (`batch show`), `commit` |
-| L3 ledger | `core.ledger_entry` (accounts also in `core`) | `BatchStore.commit` | `LedgerService` only |
+| L3 ledger | `core.ledger_entry` (accounts also in `core`; `export_account_name` maps N26 spaces) | `BatchStore.commit` | `LedgerService` only |
 
 ## 6. Adding things
 
-**A new institution (N26):**
-1. `etl/transform/n26.py`: `class N26V1(Transformer)` with `institution = "n26"`, its `columns`,
-   and `transform_row`. Reuse the base helpers (`decimal`, `iso_date`, `require`).
+**A new institution (e.g. comdirect):**
+1. `etl/transform/comdirect.py`: `class ComdirectV1(Transformer)` with its `institution`,
+   `columns` and `transform_row`. Reuse the base helpers (`decimal`, `iso_date`, `require`). Set
+   `account_column` if one file holds several accounts.
 2. Register it in `etl/registry.py:default_registry()`.
-3. `synthetic/n26.py`: a seeded generator for test data.
+3. `synthetic/comdirect.py`: a seeded generator, with its files in `synthetic.FIXTURES`.
 4. Tests: the transformer on synthetic rows plus perturbations; one end-to-end pipeline test.
 
-No changes to extract, load, the pipeline or the database.
+New entry types need a migration that replaces the `ck_ledger_entry_entry_type` CHECK.
 
 **A changed Trade Republic export:** add `TradeRepublicV2` next to V1 (subclass V1 if most logic
 carries over) and register both.
@@ -288,11 +294,13 @@ Row-level security in Postgres then limits each household member to their own ro
 | `etl/extract/csv_extractor.py` | `CsvExtractor`, `header_fingerprint()` |
 | `etl/transform/base.py` | `Transformer` ABC: schema identity, duplicate-ID check, value parsers |
 | `etl/transform/trade_republic.py` | `TradeRepublicV1`: column list, type map, sign/arithmetic/FX checks |
+| `etl/transform/n26.py` | `N26V1`: column list, type map, content-hash ids, sign/FX checks |
 | `etl/transform/validators.py` | ISIN and IBAN check digits |
 | `etl/registry.py` | `FormatRegistry`, `default_registry()` |
 | `etl/load/batch_store.py` | `BatchStore`: stage / commit / reject / report |
-| `etl/pipeline.py` | `ImportPipeline`: extract → identify → transform → stage |
+| `etl/pipeline.py` | `ImportPipeline`: extract → identify → route rows to accounts → transform → stage |
 | `services/accounts.py` | `AccountService`: create and look up accounts |
 | `services/ledger.py` | `LedgerService`: read-only queries over the ledger |
 | `interfaces/cli.py` | `our-pocket` command line |
 | `synthetic/trade_republic.py` | Seeded generator for Trade Republic test exports |
+| `synthetic/n26.py` | Seeded generator for N26 exports: three spaces, transfer pairs between them |

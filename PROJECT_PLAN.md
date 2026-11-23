@@ -14,7 +14,7 @@ is only as good as the ledger underneath.
 | # | Problem | User | Input | Output | Success check |
 |---|---|---|---|---|---|
 | **P1** | **Trustworthy ingestion of institution exports** | A household with accounts at German banks and brokers | Trade Republic transaction CSV, N26 CSV, each in whatever format version the institution ships that month | Typed, validated ledger rows (date, type, ISIN, quantity, price, amount, fee, tax, currency, FX), each traceable to its file and line | 100% field accuracy on synthetic ground truth; **0 unflagged errors** on planted perturbations; every unknown format refused at intake, never guessed; positions match the broker's own position list |
-| **P2** | **Ledger consolidation** | Same household | Ledger rows from all accounts | One ledger where internal transfers (N26 → Trade Republic deposit) are matched and overlapping exports don't double-count | Precision/recall on planted transfer pairs; re-importing any export changes nothing; net worth never double-counts |
+| **P2** | **Ledger consolidation** | Same household | Ledger rows from all accounts | One ledger where internal transfers (mostly between N26 spaces) are matched and overlapping exports don't double-count | Precision/recall on planted transfer pairs; re-importing any export changes nothing; net worth never double-counts |
 
 P3 (categorisation), P4 (subscription detection) and P5 (household Q&A agent) come in V2 and V3.
 
@@ -23,8 +23,8 @@ P3 (categorisation), P4 (subscription detection) and P5 (household Q&A agent) co
 **In scope**
 
 1. Trade Republic transaction CSV → ledger ✅
-2. N26 CSV → ledger (same pipeline; second file schema in the registry)
-3. Transfer matching between N26 and Trade Republic (P2)
+2. N26 CSV → ledger, one account per space ✅
+3. Transfer matching between accounts, mostly N26 spaces (P2)
 4. Eval harness: synthetic ground truth, perturbation suite, real-data reconciliation (§6)
 5. One chart: cash + positions over time (at cost or at reported valuations; daily prices are V2)
 6. A review step for flagged batches (CLI now; maybe one Streamlit page)
@@ -132,7 +132,7 @@ field correctly, and does it flag *every* row it can't trust? The guide's 20–5
 | **Perturbation (row level)** | ~30 planted defects: wrong sign, broken arithmetic, bad ISIN, decimal comma, missing FX field, unknown type, duplicate id, … | Each defect's expected flag | **Unflagged-error rate**; false-flag rate on clean rows | 0 unflagged; 0 false errors |
 | **Schema drift (file level)** | Renamed, added, dropped and reordered columns; `;` delimiter; BOM; cp1252 | Expected: refused at intake, explanation names the change | Detection rate; explanation correct | 100% |
 | **Idempotency** | Re-import, overlapping exports, out-of-order imports | Ledger row count | Ledger unchanged on re-import | exact |
-| **Transfer matching (P2)** | Planted N26 ↔ Trade Republic pairs incl. near-misses (same amount, ±3 days, different counterparty) | Generator pairs | Precision / recall | ≥ 0.98 / ≥ 0.95 |
+| **Transfer matching (P2)** | Planted pairs between N26 spaces (and N26 ↔ Trade Republic), incl. near-misses (same amount, ±3 days, different counterparty) | Generator pairs | Precision / recall | ≥ 0.98 / ≥ 0.95 |
 | **Real-data reconciliation** (private) | Own exports | Trade Republic's position list and cash balance shown in the app | Position diff per ISIN; cash diff | 0 (results stay local) |
 
 - Synthetic generator rules: invented ISINs and IBANs with valid check digits, the real export's quoting
@@ -152,6 +152,16 @@ field correctly, and does it flag *every* row it can't trust? The guide's 20–5
 | **V2: Categorise and value** | Categorisation (classical baseline vs LLM on low-confidence rows, cost per 1,000 rows); daily prices; comdirect CSV; PDF/LLM extraction reconsidered with the CSV parser as ground truth | Benchmark table: when GenAI beats rules |
 | **V3: Household + agent** | Row-level security; read-only MCP/SQL tools; Q&A eval; subscriptions | "What did we spend on subscriptions in Q3?" |
 
+**V3 prerequisites and shape:**
+
+- Answers are only right if transfers are matched (P2, V1) and rows are categorised (V2); otherwise
+  moves between N26 spaces count as spending.
+- Each entry point (slash command, MCP server, Slack bot) is a thin `interfaces/` adapter over
+  `LedgerService`; question-shaped methods added there (balance on a date, entries by account and
+  period) become the agent's tools.
+- Agent SQL access, if any, runs as a read-only Postgres role limited to the `core` schema.
+- Entry point order: local MCP server + Claude Code slash command first, Slack later (Q7).
+
 ## 8. Open questions
 
 | # | Question | Status |
@@ -159,6 +169,7 @@ field correctly, and does it flag *every* row it can't trust? The guide's 20–5
 | Q1 | Cash meaning of `EARNINGS`, `PRE_DETERMINED_TAX_BASE`, `TAX_OPTIMIZATION`, `STOCKPERK`: is `amount` cash, or only `tax`? Settle by reconciling against the app's cash balance | answered for the three tax types: `amount` is 0, `tax` is cash ([D-016](docs/decisions.md#d-016-tax-only-rows-move-cash-through-tax-parser-v2)); `STOCKPERK` open |
 | Q2 | Is `TRANSFER_INBOUND` vs `CUSTOMER_INBOUND` meaningful for transfer matching (P2)? | open |
 | Q3 | Do Trade Republic exports overlap between months, or is each a clean partition? (The pipeline handles both) | open |
-| Q4 | N26 export: one file per account/space, all with the same header? | open |
+| Q4 | N26 export: one file per account/space, all with the same header? | answered: same header; mostly one file per space, but a file can include rows of another space, so rows are routed by `Account Name` ([D-018](docs/decisions.md#d-018-one-account-per-n26-space-routed-by-account-name)) |
 | Q5 | Timebox for V1 | open |
 | Q6 | Consent from each household member before their accounts are imported | open |
+| Q7 | Slack access sends ledger data to Slack and the LLM provider and needs hosting: worth it over a local MCP server + slash command? Needs Q6 settled first | open |

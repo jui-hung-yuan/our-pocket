@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 from our_pocket.db.schema import SCHEMAS
 from our_pocket.etl.models import Account
 from our_pocket.services import AccountService
+from our_pocket.synthetic import n26 as synth_n26
 from our_pocket.synthetic import trade_republic as synth_tr
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +22,11 @@ TEST_DATABASE_URL = os.environ.get(
 @pytest.fixture(scope="session")
 def synthetic() -> synth_tr.SyntheticExport:
     return synth_tr.generate(seed=42)
+
+
+@pytest.fixture(scope="session")
+def synthetic_n26() -> synth_n26.SyntheticN26:
+    return synth_n26.generate(seed=42)
 
 
 def alembic_config(url: str) -> Config:

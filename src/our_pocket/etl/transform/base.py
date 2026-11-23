@@ -26,6 +26,9 @@ class Transformer(ABC):
     parser_version: ClassVar[str]
     columns: ClassVar[tuple[str, ...]]
     delimiter: ClassVar[str] = ","
+    # Column naming the account each row belongs to, for exports that hold several
+    # accounts in one file (N26 spaces). None: the whole file is one account.
+    account_column: ClassVar[str | None] = None
 
     @property
     def schema_id(self) -> str:

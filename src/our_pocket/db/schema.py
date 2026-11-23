@@ -69,6 +69,13 @@ ENTRY_TYPES = (
     "tax_adjustment",
     "tax_base",
     "bonus",
+    "card_payment",
+    "card_refund",
+    "transfer_in",
+    "transfer_out",
+    "direct_debit",
+    "fee",
+    "tax",
 )
 
 QTY = Numeric(28, 10)
@@ -91,6 +98,9 @@ def _created_at() -> Column[datetime]:
 # --- Who owns what -------------------------------------------------------------------
 # household_id / owner_person_id exist from day one so row-level security (V3) needs
 # no data migration, even though V1 has a single user.
+
+# Used when no household is named; V1 has one.
+DEFAULT_HOUSEHOLD = "household"
 
 household = Table(
     "household",
@@ -122,7 +132,13 @@ account = Table(
     Column("institution", Text, nullable=False),
     Column("name", Text, nullable=False, unique=True),
     Column("currency", Text, nullable=False, server_default="EUR"),
+    # The account's name inside the export, for formats that hold several accounts per
+    # file (N26 spaces, in the `Account Name` column). NULL when the export has none.
+    Column("export_account_name", Text),
     _created_at(),
+    UniqueConstraint(
+        "household_id", "institution", "export_account_name", name="uq_account_export_account_name"
+    ),
     schema=CORE,
 )
 

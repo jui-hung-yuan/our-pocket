@@ -1,0 +1,175 @@
+Booking Date,Value Date,Partner Name,Partner Iban,Type,Payment Reference,Account Name,Amount (EUR),Original Amount,Original Currency,Exchange Rate
+2025-01-01,2025-01-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-01-01,2025-01-01,Example Bakery,,Presentment,,Alex Example,-19.91,19.91,EUR,1
+2025-01-02,2025-01-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-01-03,2025-01-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-01-04,2025-01-04,Example Bakery,,Presentment,,Alex Example,-24.53,24.53,EUR,1
+2025-01-05,2025-01-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-01-05,2025-01-05,Example Bakery,,Presentment,,Alex Example,-57.43,57.43,EUR,1
+2025-01-14,2025-01-14,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-38.05,,,
+2025-01-18,2025-01-18,Example Bakery,,Presentment,,Alex Example,-50.37,50.37,EUR,1
+2025-01-19,2025-01-19,,,Fee,ATM fee,Alex Example,-2.5,,,
+2025-01-20,2025-01-20,Example Bakery,,Presentment,,Alex Example,-47.97,47.97,EUR,1
+2025-01-21,2025-01-21,Example Pharmacy,,Presentment,,Alex Example,-20.05,20.05,EUR,1
+2025-02-01,2025-02-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-02-02,2025-02-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-02-03,2025-02-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-02-03,2025-02-03,Example Bakery,,Presentment,,Alex Example,-56.17,56.17,EUR,1
+2025-02-05,2025-02-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-02-10,2025-02-10,Example Bakery,,Presentment,,Alex Example,-21.07,21.07,EUR,1
+2025-02-10,2025-02-10,Example Bakery,,Presentment,,Alex Example,-3.4,3.4,EUR,1
+2025-02-10,2025-02-10,Example Bakery,,Presentment,,Alex Example,-3.4,3.4,EUR,1
+2025-02-13,2025-02-13,Example Bakery,,Presentment,,Alex Example,-47.22,47.22,EUR,1
+2025-02-13,2025-02-13,Example Books,,Presentment,,Alex Example,-39.14,39.14,EUR,1
+2025-02-18,2025-02-18,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-16.05,,,
+2025-02-21,2025-02-21,Example Books,,Presentment,,Alex Example,-49.29,49.29,EUR,1
+2025-02-23,2025-02-23,Sam Example,DE78370400440532013004,MoneyBeam,Tickets,Alex Example,13.99,,,
+2025-02-24,2025-02-23,Example Pharmacy,,Presentment,,Alex Example,-45.92,45.92,EUR,1
+2025-03-01,2025-03-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-03-02,2025-03-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-03-03,2025-03-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-03-05,2025-03-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-03-07,2025-03-07,Example Books,,Presentment,,Alex Example,-19.41,19.41,EUR,1
+2025-03-08,2025-03-08,Example Books,,Presentment,,Alex Example,-49.88,49.88,EUR,1
+2025-03-11,2025-03-11,Example Bakery,,Presentment,,Alex Example,-20.76,20.76,EUR,1
+2025-03-13,2025-03-13,Example Pharmacy,,Presentment,,Alex Example,-13.7,13.7,EUR,1
+2025-03-13,2025-03-13,Example Hygge Cafe,,Presentment,,Alex Example,-28.55,213.38,DKK,0.1338053097
+2025-03-19,2025-03-19,Example Pharmacy,,Presentment,,Alex Example,-31.65,31.65,EUR,1
+2025-03-23,2025-03-23,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-5.47,,,
+2025-03-26,2025-03-26,Example Books,,Presentment,,Alex Example,-34.86,34.86,EUR,1
+2025-04-01,2025-04-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-04-02,2025-04-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-04-03,2025-04-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-04-05,2025-04-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-04-08,2025-04-08,Sam Example,DE78370400440532013004,MoneyBeam,Tickets,Alex Example,34.97,,,
+2025-04-10,2025-04-10,Example Pharmacy,,Presentment,,Alex Example,-14.95,14.95,EUR,1
+2025-04-17,2025-04-17,Example Bakery,,Presentment,,Alex Example,-53.22,53.22,EUR,1
+2025-04-19,2025-04-19,,,Fee,ATM fee,Alex Example,-2.5,,,
+2025-04-21,2025-04-21,Example Cafe,,Presentment,,Alex Example,-14.52,14.52,EUR,1
+2025-04-21,2025-04-21,Example Books,,Presentment Refund,,Alex Example,18.5,18.5,EUR,1
+2025-04-24,2025-04-24,Example Bakery,,Presentment,,Alex Example,-57.84,57.84,EUR,1
+2025-04-24,2025-04-24,Example Books,,Presentment,,Alex Example,-43,43,EUR,1
+2025-04-24,2025-04-24,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-8.22,,,
+2025-04-25,2025-04-25,Example Books,,Presentment,,Alex Example,-54.5,54.5,EUR,1
+2025-05-01,2025-05-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-05-02,2025-05-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-05-03,2025-05-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-05-05,2025-05-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-05-05,2025-05-05,Example Pharmacy,,Presentment,,Alex Example,-47.03,47.03,EUR,1
+2025-05-12,2025-05-12,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-27.08,,,
+2025-05-15,2025-05-15,Example Bakery,,Presentment,,Alex Example,-22.3,22.3,EUR,1
+2025-05-16,2025-05-16,Example Online Store,,Presentment,,Alex Example,-28.51,32.81,USD,0.868907563
+2025-05-17,2025-05-17,Example Pharmacy,,Presentment,,Alex Example,-19.35,19.35,EUR,1
+2025-05-22,2025-05-22,Example Books,,Presentment,,Alex Example,-37.88,37.88,EUR,1
+2025-05-25,2025-05-25,Example Cafe,,Presentment,,Alex Example,-27.53,27.53,EUR,1
+2025-05-27,2025-05-27,Example Bakery,,Presentment,,Alex Example,-45.63,45.63,EUR,1
+2025-06-01,2025-06-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-06-02,2025-06-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-06-03,2025-06-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-06-05,2025-06-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-06-06,2025-06-06,Sam Example,DE78370400440532013004,MoneyBeam,Tickets,Alex Example,8.82,,,
+2025-06-11,2025-06-11,Example Bakery,,Presentment,,Alex Example,-22.36,22.36,EUR,1
+2025-06-15,2025-06-15,Example Bakery,,Presentment,,Alex Example,-57.16,57.16,EUR,1
+2025-06-21,2025-06-21,Example Bakery,,Presentment,,Alex Example,-6.96,6.96,EUR,1
+2025-06-22,2025-06-22,Example Pharmacy,,Presentment,,Alex Example,-31.02,31.02,EUR,1
+2025-06-23,2025-06-23,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-39.24,,,
+2025-06-24,2025-06-24,Example Pharmacy,,Presentment,,Alex Example,-21.9,21.9,EUR,1
+2025-06-26,2025-06-25,Example Pharmacy,,Presentment,,Alex Example,-17.59,17.59,EUR,1
+2025-07-01,2025-07-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-07-01,2025-07-01,Example Pharmacy,,Presentment,,Alex Example,-23.72,23.72,EUR,1
+2025-07-02,2025-07-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-07-03,2025-07-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-07-05,2025-07-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-07-06,2025-07-06,Example Pharmacy,,Presentment,,Alex Example,-41.78,41.78,EUR,1
+2025-07-07,2025-07-07,Example Bakery,,Presentment,,Alex Example,-49.44,49.44,EUR,1
+2025-07-13,2025-07-13,Example Hygge Cafe,,Presentment,,Alex Example,-34.96,261.25,DKK,0.1338053097
+2025-07-18,2025-07-18,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-9.91,,,
+2025-07-19,2025-07-19,,,Fee,ATM fee,Alex Example,-2.5,,,
+2025-07-24,2025-07-24,Example Pharmacy,,Presentment,,Alex Example,-14.68,14.68,EUR,1
+2025-07-26,2025-07-26,Example Pharmacy,,Presentment,,Alex Example,-25.36,25.36,EUR,1
+2025-07-28,2025-07-28,Example Pharmacy,,Presentment,,Alex Example,-6.8,6.8,EUR,1
+2025-08-01,2025-08-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-08-02,2025-08-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-08-03,2025-08-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-08-05,2025-08-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-08-05,2025-08-05,Example Books,,Presentment,,Alex Example,-39.45,39.45,EUR,1
+2025-08-08,2025-08-07,Example Bakery,,Presentment,,Alex Example,-52.73,52.73,EUR,1
+2025-08-09,2025-08-09,Sam Example,DE78370400440532013004,MoneyBeam,Tickets,Alex Example,10.5,,,
+2025-08-19,2025-08-19,Example Bakery,,Presentment,,Alex Example,-8,8,EUR,1
+2025-08-22,2025-08-22,Example Books,,Presentment,,Alex Example,-23.36,23.36,EUR,1
+2025-08-23,2025-08-23,Example Books,,Presentment,,Alex Example,-21.55,21.55,EUR,1
+2025-08-23,2025-08-23,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-17.26,,,
+2025-08-25,2025-08-25,Example Bakery,,Presentment,,Alex Example,-2.76,2.76,EUR,1
+2025-09-01,2025-09-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-09-02,2025-09-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-09-03,2025-09-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-09-04,2025-09-04,Example Bakery,,Presentment,,Alex Example,-47.32,47.32,EUR,1
+2025-09-05,2025-09-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-09-10,2025-09-10,Example Cafe,,Presentment,,Alex Example,-30.08,30.08,EUR,1
+2025-09-10,2025-09-10,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-6.71,,,
+2025-09-21,2025-09-21,Example Books,,Presentment,,Alex Example,-43.4,43.4,EUR,1
+2025-09-25,2025-09-25,Example Cafe,,Presentment,,Alex Example,-54.19,54.19,EUR,1
+2025-09-27,2025-09-26,Example Books,,Presentment,,Alex Example,-5.61,5.61,EUR,1
+2025-09-28,2025-09-28,Example Bakery,,Presentment,,Alex Example,-9.56,9.56,EUR,1
+2025-10-01,2025-10-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-10-01,2025-10-01,Example Cafe,,Presentment,,Alex Example,-29.21,29.21,EUR,1
+2025-10-02,2025-10-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-10-03,2025-10-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-10-05,2025-10-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-10-08,2025-10-08,Example Bakery,,Presentment,,Alex Example,-30.97,30.97,EUR,1
+2025-10-08,2025-10-08,Example Cafe,,Presentment,,Alex Example,-16.5,16.5,EUR,1
+2025-10-12,2025-10-12,Example Bakery,,Presentment,,Alex Example,-31.31,31.31,EUR,1
+2025-10-12,2025-10-12,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-21.32,,,
+2025-10-14,2025-10-14,Example Cafe,,Presentment,,Alex Example,-23.85,23.85,EUR,1
+2025-10-16,2025-10-16,Sam Example,DE78370400440532013004,MoneyBeam,Tickets,Alex Example,16.41,,,
+2025-10-19,2025-10-19,,,Fee,ATM fee,Alex Example,-2.5,,,
+2025-10-28,2025-10-28,Example Pharmacy,,Presentment,,Alex Example,-52.84,52.84,EUR,1
+2025-11-01,2025-11-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-11-02,2025-11-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-11-03,2025-11-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-11-05,2025-11-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-11-09,2025-11-09,Example Cafe,,Presentment,,Alex Example,-49.56,49.56,EUR,1
+2025-11-09,2025-11-09,Example Bakery,,Presentment,,Alex Example,-10.88,10.88,EUR,1
+2025-11-09,2025-11-09,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-34.48,,,
+2025-11-12,2025-11-12,Example Books,,Presentment,,Alex Example,-37.74,37.74,EUR,1
+2025-11-13,2025-11-12,Example Books,,Presentment,,Alex Example,-4.26,4.26,EUR,1
+2025-11-13,2025-11-13,Example Hygge Cafe,,Presentment,,Alex Example,-34.47,257.65,DKK,0.1338053097
+2025-11-16,2025-11-16,Example Online Store,,Presentment,,Alex Example,-53.04,61.04,USD,0.868907563
+2025-11-17,2025-11-17,Example Bakery,,Presentment,,Alex Example,-33.55,33.55,EUR,1
+2025-11-25,2025-11-25,Example Books,,Presentment,,Alex Example,-30.76,30.76,EUR,1
+2025-12-01,2025-12-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2025-12-01,2025-12-01,Example Books,,Presentment,,Alex Example,-25.5,25.5,EUR,1
+2025-12-02,2025-12-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2025-12-03,2025-12-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2025-12-05,2025-12-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2025-12-06,2025-12-06,Example Books,,Presentment,,Alex Example,-35.26,35.26,EUR,1
+2025-12-13,2025-12-12,Example Books,,Presentment,,Alex Example,-47.41,47.41,EUR,1
+2025-12-13,2025-12-13,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-32.55,,,
+2025-12-14,2025-12-14,Example Pharmacy,,Presentment,,Alex Example,-57.48,57.48,EUR,1
+2025-12-15,2025-12-15,Sam Example,DE78370400440532013004,MoneyBeam,Tickets,Alex Example,14.2,,,
+2025-12-17,2025-12-17,Example Books,,Presentment,,Alex Example,-56.63,56.63,EUR,1
+2025-12-26,2025-12-26,Example Books,,Presentment,,Alex Example,-40.09,40.09,EUR,1
+2026-01-01,2026-01-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2026-01-01,2026-01-01,Example Bakery,,Presentment,,Alex Example,-36.82,36.82,EUR,1
+2026-01-02,2026-01-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2026-01-03,2026-01-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2026-01-05,2026-01-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2026-01-05,2026-01-05,Example Bakery,,Presentment,,Alex Example,-5.78,5.78,EUR,1
+2026-01-13,2026-01-13,Example Cafe,,Presentment,,Alex Example,-14.08,14.08,EUR,1
+2026-01-16,2026-01-16,Example Bakery,,Presentment,,Alex Example,-39.3,39.3,EUR,1
+2026-01-19,2026-01-19,,,Fee,ATM fee,Alex Example,-2.5,,,
+2026-01-21,2026-01-21,Example Cafe,,Presentment,,Alex Example,-59.04,59.04,EUR,1
+2026-01-22,2026-01-22,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-22.47,,,
+2026-01-26,2026-01-26,Example Pharmacy,,Presentment,,Alex Example,-6.11,6.11,EUR,1
+2026-02-01,2026-02-01,Example Employer GmbH,DE62370400440532013001,Credit Transfer,Salary,Alex Example,2500,,,
+2026-02-02,2026-02-02,Alex & Sam Example 🫶,,Debit Transfer,Household,Alex Example,-600,,,
+2026-02-03,2026-02-03,Example Energy AG,DE35370400440532013002,Direct Debit,,Alex Example,-85,,,
+2026-02-05,2026-02-05,Example Telecom,DE08370400440532013003,Direct Debit,,Alex Example,-29.99,,,
+2026-02-05,2026-02-05,Example Cafe,,Presentment,,Alex Example,-33.37,33.37,EUR,1
+2026-02-11,2026-02-10,Example Books,,Presentment,,Alex Example,-46.24,46.24,EUR,1
+2026-02-15,2026-02-15,Example Cafe,,Presentment,,Alex Example,-40.88,40.88,EUR,1
+2026-02-15,2026-02-15,Example Bakery,,Presentment,,Alex Example,-25.4,25.4,EUR,1
+2026-02-21,2026-02-21,Sam Example,DE78370400440532013004,MoneyBeam,Tickets,Alex Example,5.24,,,
+2026-02-24,2026-02-24,Sam Example,DE78370400440532013004,MoneyBeam,Dinner,Alex Example,-20.58,,,
+2026-02-25,2026-02-25,Example Cafe,,Presentment,,Alex Example,-54.23,54.23,EUR,1
+2026-02-25,2026-02-25,Example Pharmacy,,Presentment,,Alex Example,-53.34,53.34,EUR,1

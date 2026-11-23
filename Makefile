@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck guard boundaries migrations test fmt hooks db migrate synthetic demo
+.PHONY: check lint typecheck guard boundaries migrations test fmt hooks db migrate reset-db synthetic demo
 
 # Where `make migrations` and pytest run. Both drop and recreate tables here,
 # so this must never point at the database holding your real data.
@@ -43,6 +43,12 @@ db:  ## start Postgres (app db `pocket` + `pocket_test`)
 	docker compose up -d --wait
 
 migrate:  ## apply migrations to DATABASE_URL (the app database)
+	uv run alembic upgrade head
+
+reset-db:  ## DELETE everything in the app database `pocket`, then migrate (re-import after)
+	@read -p "Drop all data in the pocket database? Type pocket to confirm: " answer && [ "$$answer" = pocket ]
+	docker compose exec -T db psql -U pocket -d pocket -v ON_ERROR_STOP=1 \
+		-c "DROP SCHEMA IF EXISTS raw, staging, core CASCADE" -c "DROP TABLE IF EXISTS alembic_version"
 	uv run alembic upgrade head
 
 synthetic:  ## regenerate every committed file under data/synthetic/

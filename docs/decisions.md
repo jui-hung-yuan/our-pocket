@@ -194,3 +194,47 @@ make the trust level visible in every query and give V3 a natural grant boundary
 `USAGE` on `core` only). `import_batch` sits in `staging`, not `raw`, because review updates its
 `status`; its file-identity columns are written once, but splitting the table wasn't worth it yet.
 An `analytics` schema for report views comes when the first view does.
+
+### D-018: One account per N26 space, routed by `Account Name`
+*2026-11-22*
+
+**Chose:** each N26 space is its own account, matched by `account.export_account_name`, which is
+unique per household (two households can both have a "Main Account"). An N26 file is imported
+without `--account` (with `--household` when not the default); its rows are grouped by
+`Account Name` and each group is staged as its own batch. If any space has no account, nothing
+is staged and the error lists the `account add` command per space. Spaces already committed from
+the same file are skipped on re-import, so a rejected space can be imported again. Migration 0003
+adds the column and the bank entry types (`card_payment`, `card_refund`, `transfer_in`,
+`transfer_out`, `direct_debit`, `fee`, `tax`).
+
+**Over:** one account per N26 login, with the space kept on each row.
+
+**Why:** ownership is per space (a shared space is joint, `owner_person_id = NULL`), and most
+transfers are between spaces, which P2 can only match if they're movements between accounts.
+Real exports are mostly one file per space but can include rows of another space (Q4).
+
+### D-019: N26 external id is a content hash plus an occurrence number
+*2026-11-22*
+
+**Chose:** `external_id = "n26:" + sha256(every value except Account Name)[:32] + ":" + n`,
+where `n` numbers identical rows within a space in file order.
+
+**Over:** a hash alone (identical rows are real: two equal card payments on one day), hashing
+`Account Name` too, or no deduplication for N26.
+
+**Why:** N26 exports no transaction id. The ledger is unique per account already, and a space can
+be renamed in the app, which would otherwise give every overlapping row a new id. N26 exports
+whole days, so a group of identical rows is never split between overlapping exports, and their
+numbers match. **Limit:** if N26 edits a past row (a cleaned-up merchant name), a re-export gives
+it a new id and it's imported twice.
+
+### D-020: N26 fees and taxes go in the `fee` and `tax` columns
+*2026-11-22*
+
+**Chose:** Fee rows carry their money in `fee` and Tax rows in `tax`, with `amount = 0`. Dates
+have no time, so `booked_at` is the booking date at 00:00 Europe/Berlin.
+
+**Over:** the money in `amount`, typed `fee` or `tax`.
+
+**Why:** `cash_effect = amount + fee + tax` then holds across institutions, and tax totals cover
+N26 too.

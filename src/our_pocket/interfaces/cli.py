@@ -2,6 +2,8 @@
 
 our-pocket account add "TR Depot" --institution trade_republic --owner Alex
 our-pocket import data/synthetic/trade_republic/transactions_seed42.csv --account "TR Depot"
+our-pocket account add "N26 Shared" --institution n26 --export-name "<Account Name in the CSV>"
+our-pocket import data/synthetic/n26/main_mixed_seed42.csv     # N26: one batch per space
 our-pocket batch show 1
 our-pocket batch commit 1 --accept-warnings
 our-pocket ledger --account "TR Depot"
@@ -17,6 +19,7 @@ from pathlib import Path
 from sqlalchemy.exc import IntegrityError
 
 from our_pocket.db import get_engine
+from our_pocket.db.schema import DEFAULT_HOUSEHOLD
 from our_pocket.etl.extract import ExtractionError
 from our_pocket.etl.load import BatchError, BatchReport, BatchStore
 from our_pocket.etl.pipeline import ImportPipeline
@@ -57,7 +60,11 @@ def _print_report(report: BatchReport, *, max_flags: int) -> None:
 def cmd_account_add(args: argparse.Namespace) -> None:
     with get_engine().begin() as conn:
         account = AccountService(conn).add(
-            args.name, args.institution, owner=args.owner, household_name=args.household
+            args.name,
+            args.institution,
+            owner=args.owner,
+            household_name=args.household,
+            export_account_name=args.export_name,
         )
     print(f"account {account.id} {account.name!r} created")
 
@@ -65,10 +72,11 @@ def cmd_account_add(args: argparse.Namespace) -> None:
 def cmd_import(args: argparse.Namespace) -> None:
     engine = get_engine()
     with engine.begin() as conn:
-        account = AccountService(conn).get(args.account)
-        batch_id = ImportPipeline(conn).run_path(Path(args.file), account)
+        account = AccountService(conn).get(args.account) if args.account else None
+        batch_ids = ImportPipeline(conn).run_path(Path(args.file), account, args.household)
     with engine.connect() as conn:
-        _print_report(BatchStore(conn).report(batch_id), max_flags=args.max_flags)
+        for batch_id in batch_ids:
+            _print_report(BatchStore(conn).report(batch_id), max_flags=args.max_flags)
 
 
 def cmd_batch_show(args: argparse.Namespace) -> None:
@@ -132,12 +140,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--institution", required=True, choices=AccountService.supported_institutions()
     )
     add.add_argument("--owner", help="person owning the account; omit for a joint account")
-    add.add_argument("--household", default="household")
+    add.add_argument("--household", default=DEFAULT_HOUSEHOLD)
+    add.add_argument(
+        "--export-name",
+        help="the account's name inside the export (N26: the `Account Name` column)",
+    )
     add.set_defaults(func=cmd_account_add)
 
-    imp = sub.add_parser("import", help="stage a file as a new import batch")
+    imp = sub.add_parser("import", help="stage a file as new import batch(es)")
     imp.add_argument("file")
-    imp.add_argument("--account", required=True)
+    imp.add_argument(
+        "--account",
+        help="account to import into; omit for N26, whose rows name their space",
+    )
+    imp.add_argument(
+        "--household",
+        default=DEFAULT_HOUSEHOLD,
+        help="whose N26 spaces the rows are matched to",
+    )
     imp.add_argument("--max-flags", type=int, default=20)
     imp.set_defaults(func=cmd_import)
 

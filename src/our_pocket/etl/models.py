@@ -16,6 +16,7 @@ class Account:
     name: str
     institution: str
     household_id: int
+    export_account_name: str | None = None
 
 
 @dataclass(frozen=True)

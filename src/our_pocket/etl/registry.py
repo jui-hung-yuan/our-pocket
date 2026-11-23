@@ -8,7 +8,7 @@ the schema version they were read with.
 from collections.abc import Iterable, Iterator
 
 from our_pocket.etl.extract import FileSignature
-from our_pocket.etl.transform import TradeRepublicV1, Transformer
+from our_pocket.etl.transform import N26V1, TradeRepublicV1, Transformer
 
 
 class FormatRegistry:
@@ -50,4 +50,4 @@ class FormatRegistry:
 
 
 def default_registry() -> FormatRegistry:
-    return FormatRegistry([TradeRepublicV1()])
+    return FormatRegistry([TradeRepublicV1(), N26V1()])

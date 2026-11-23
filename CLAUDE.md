@@ -13,5 +13,16 @@
 - Functions and methods are verbs that say what they do (`reject_at_intake`, `ensure_not_loaded`).
 - Files and modules are named after the one thing they hold (`batch_store.py`, `trade_republic.py`).
 
+## Privacy
+- Real names, amounts, counts and export file names stay in `data/raw/` and `docs/private/`,
+  scratch notes included. Committed files use invented ones.
+
+## Imports
+- An external id must not include values the source lets users edit (N26 space names). Decide
+  its formula before real rows are committed: changing it later breaks deduplication.
+- Migrations name constraints explicitly and pass names through `op.f()`, so the naming
+  convention isn't applied twice.
+
 ## Before committing
 - `make check` passes.
+- A feature branch gets an independent review before merge.

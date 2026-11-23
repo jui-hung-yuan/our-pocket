@@ -3,7 +3,7 @@
 A household ledger built from German bank and broker CSV exports. No number reaches the ledger
 unvalidated, and every number traces back to its file and line.
 
-Status: V1 in progress. Trade Republic CSV → ledger works end to end; N26 is next.
+Status: V1 in progress. Trade Republic and N26 CSV → ledger work end to end; transfer matching is next.
 Plan: [PROJECT_PLAN.md](PROJECT_PLAN.md) · decisions: [docs/decisions.md](docs/decisions.md).
 
 ## How an import works
@@ -40,6 +40,10 @@ Real exports go in git-ignored `data/raw/`:
 ```bash
 uv run our-pocket account add "TR" --institution trade_republic --owner <name>
 uv run our-pocket import data/raw/trade_republic/<export>.csv --account TR
+
+# N26: one account per space, named as in the CSV's `Account Name` column
+uv run our-pocket account add "N26 Main" --institution n26 --owner <name> --export-name "<space>"
+uv run our-pocket import data/raw/n26/<export>.csv
 ```
 
 ## Checks
