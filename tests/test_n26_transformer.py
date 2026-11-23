@@ -10,6 +10,7 @@ from our_pocket.etl.transform.n26 import N26V1
 from our_pocket.synthetic import n26 as synth_n26
 
 PARSER = N26V1()
+NO_FX = {"original amount": "", "original currency": "", "exchange rate": ""}
 
 
 def _row(line: int = 2, **overrides: str) -> RawRow:
@@ -65,8 +66,7 @@ def test_card_payment_in_foreign_currency():
     ("n26_type", "amount", "column"), [("Fee", "-2.50", "fee"), ("Tax", "-0.30", "tax")]
 )
 def test_fee_and_tax_rows_carry_the_money_in_their_column(n26_type, amount, column):
-    no_fx = {"original amount": "", "original currency": "", "exchange rate": ""}
-    row = _parse(_row(**{"type": n26_type, "amount (eur)": amount, "partner name": ""} | no_fx))
+    row = _parse(_row(**{"type": n26_type, "amount (eur)": amount, "partner name": ""} | NO_FX))
     assert row.entry_type == n26_type.lower()
     assert row.amount == 0
     assert getattr(row, column) == Decimal(amount)
@@ -76,10 +76,30 @@ def test_fee_and_tax_rows_carry_the_money_in_their_column(n26_type, amount, colu
 
 @pytest.mark.parametrize(("amount", "entry_type"), [("25", "transfer_in"), ("-25", "transfer_out")])
 def test_moneybeam_direction_follows_the_sign(amount, entry_type):
-    no_fx = {"original amount": "", "original currency": "", "exchange rate": ""}
-    row = _parse(_row(**{"type": "MoneyBeam", "amount (eur)": amount} | no_fx))
+    row = _parse(_row(**{"type": "MoneyBeam", "amount (eur)": amount} | NO_FX))
     assert row.entry_type == entry_type
     assert row.flags == []
+
+
+@pytest.mark.parametrize(
+    ("n26_type", "amount", "iban", "entry_type"),
+    [
+        ("Credit Transfer", "25", "", "space_transfer_in"),
+        ("Debit Transfer", "-25", "", "space_transfer_out"),
+        ("Credit Transfer", "25", "DE89370400440532013000", "transfer_in"),
+        ("Debit Transfer", "-25", "DE89370400440532013000", "transfer_out"),
+    ],
+)
+def test_transfer_without_partner_iban_is_between_spaces(n26_type, amount, iban, entry_type):
+    overrides = {"type": n26_type, "amount (eur)": amount, "partner iban": iban} | NO_FX
+    row = _parse(_row(**overrides))
+    assert row.entry_type == entry_type
+    assert row.flags == []
+
+
+def test_space_transfer_with_the_wrong_sign_is_flagged():
+    row = _parse(_row(**{"type": "Credit Transfer", "amount (eur)": "-25"} | NO_FX))
+    assert ("warning", "unexpected_sign") in _codes(row)
 
 
 def test_text_fields_map_to_counterparty_and_description():
@@ -119,10 +139,25 @@ def test_external_id_survives_a_space_rename():
     assert _parse(_row()).external_id == _parse(_row(**{"account name": "Renamed"})).external_id
 
 
-def test_occurrences_are_numbered_per_space():
-    main, shared = PARSER.transform([_row(line=2), _row(line=3, **{"account name": "Shared"})])
-    assert main.external_id == shared.external_id
-    assert main.external_id.endswith(":1")
+def test_occurrences_are_numbered_per_file():
+    """A file goes into one account, so rows of another space must not collide with its own."""
+    main, other = PARSER.transform([_row(line=2), _row(line=3, **{"account name": "Deleted"})])
+    assert main.external_id.endswith(":1") and other.external_id.endswith(":2")
+
+
+def _transfer(**overrides: str) -> RawRow:
+    return _row(**{"type": "Debit Transfer", "amount (eur)": "-25"} | NO_FX | overrides)
+
+
+def test_space_transfer_id_survives_a_partner_space_rename():
+    renamed = _transfer(**{"partner name": "Holiday"})
+    assert _parse(_transfer()).external_id == _parse(renamed).external_id
+
+
+def test_external_transfer_id_includes_the_partner_name():
+    iban = {"partner iban": "DE89370400440532013000"}
+    other = _transfer(**iban, **{"partner name": "Someone Else"})
+    assert _parse(_transfer(**iban)).external_id != _parse(other).external_id
 
 
 def test_external_id_changes_with_any_value():
@@ -164,3 +199,17 @@ def test_synthetic_n26_cash_effect_sums_to_the_balance(synthetic_n26):
     for space, balance in synthetic_n26.balances().items():
         raw_file = CsvExtractor().extract(synthetic_n26.to_csv_bytes(space), f"{space}.csv")
         assert sum(p.cash_effect for p in PARSER.transform(raw_file.rows)) == balance
+
+
+def test_synthetic_n26_transfers_between_spaces_are_space_transfers(synthetic_n26):
+    rows = {}
+    for space in synth_n26.SPACES:
+        raw_file = CsvExtractor().extract(synthetic_n26.to_csv_bytes(space), f"{space}.csv")
+        rows |= {(space, p.line_number): p for p in PARSER.transform(raw_file.rows)}
+    partners = set(synth_n26.SPACES) | {synth_n26.OTHER_MEMBER_MAIN}
+    for row in rows.values():
+        is_space_transfer = row.entry_type in ("space_transfer_in", "space_transfer_out")
+        assert is_space_transfer == (
+            row.source_type in ("Credit Transfer", "Debit Transfer")
+            and row.counterparty_name in partners
+        )

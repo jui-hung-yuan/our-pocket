@@ -1,5 +1,4 @@
 from our_pocket.etl.load.batch_store import (
-    AccountNotAllowed,
     AccountRequired,
     BatchError,
     BatchReport,
@@ -8,12 +7,10 @@ from our_pocket.etl.load.batch_store import (
     CommitResult,
     DuplicateFile,
     InvalidBatchState,
-    UnknownExportAccount,
     UnknownFormat,
 )
 
 __all__ = [
-    "AccountNotAllowed",
     "AccountRequired",
     "BatchError",
     "BatchReport",
@@ -22,6 +19,5 @@ __all__ = [
     "CommitResult",
     "DuplicateFile",
     "InvalidBatchState",
-    "UnknownExportAccount",
     "UnknownFormat",
 ]

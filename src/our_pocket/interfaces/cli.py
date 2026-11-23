@@ -2,8 +2,8 @@
 
 our-pocket account add "TR Depot" --institution trade_republic --owner Alex
 our-pocket import data/synthetic/trade_republic/transactions_seed42.csv --account "TR Depot"
-our-pocket account add "N26 Shared" --institution n26 --export-name "<Account Name in the CSV>"
-our-pocket import data/synthetic/n26/main_mixed_seed42.csv     # N26: one batch per space
+our-pocket account add "N26 Main" --institution n26 --owner Alex --export-name "Alex Example"
+our-pocket import data/synthetic/n26/main_seed42.csv --account "N26 Main"   # one file per space
 our-pocket batch show 1
 our-pocket batch commit 1 --accept-warnings
 our-pocket ledger --account "TR Depot"
@@ -72,11 +72,11 @@ def cmd_account_add(args: argparse.Namespace) -> None:
 def cmd_import(args: argparse.Namespace) -> None:
     engine = get_engine()
     with engine.begin() as conn:
-        account = AccountService(conn).get(args.account) if args.account else None
-        batch_ids = ImportPipeline(conn).run_path(Path(args.file), account, args.household)
+        batch_id = ImportPipeline(conn).run_path(
+            Path(args.file), AccountService(conn).get(args.account)
+        )
     with engine.connect() as conn:
-        for batch_id in batch_ids:
-            _print_report(BatchStore(conn).report(batch_id), max_flags=args.max_flags)
+        _print_report(BatchStore(conn).report(batch_id), max_flags=args.max_flags)
 
 
 def cmd_batch_show(args: argparse.Namespace) -> None:
@@ -139,7 +139,9 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument(
         "--institution", required=True, choices=AccountService.supported_institutions()
     )
-    add.add_argument("--owner", help="person owning the account; omit for a joint account")
+    whose = add.add_mutually_exclusive_group(required=True)
+    whose.add_argument("--owner", help="person owning the account")
+    whose.add_argument("--joint", action="store_true", help="shared by the household")
     add.add_argument("--household", default=DEFAULT_HOUSEHOLD)
     add.add_argument(
         "--export-name",
@@ -147,17 +149,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add.set_defaults(func=cmd_account_add)
 
-    imp = sub.add_parser("import", help="stage a file as new import batch(es)")
+    imp = sub.add_parser("import", help="stage a file as a new import batch")
     imp.add_argument("file")
-    imp.add_argument(
-        "--account",
-        help="account to import into; omit for N26, whose rows name their space",
-    )
-    imp.add_argument(
-        "--household",
-        default=DEFAULT_HOUSEHOLD,
-        help="whose N26 spaces the rows are matched to",
-    )
+    imp.add_argument("--account", required=True, help="account to import into")
     imp.add_argument("--max-flags", type=int, default=20)
     imp.set_defaults(func=cmd_import)
 

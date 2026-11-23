@@ -89,9 +89,9 @@ def test_n26_identifiers_are_valid(synthetic_n26):
     assert ibans and all(is_valid_iban(iban) for iban in ibans)
 
 
-def test_n26_mixed_file_holds_two_spaces_out_of_order(synthetic_n26):
+def test_n26_mixed_file_holds_a_deleted_space_out_of_order(synthetic_n26):
     rows = list(csv.DictReader(io.StringIO(synthetic_n26.mixed_csv_bytes().decode())))
-    assert {r["Account Name"] for r in rows} == {synth_n26.MAIN, synth_n26.SHARED}
+    assert {r["Account Name"] for r in rows} == {synth_n26.MAIN, synth_n26.DELETED}
     dates = [r["Booking Date"] for r in rows]
     assert dates != sorted(dates)
 

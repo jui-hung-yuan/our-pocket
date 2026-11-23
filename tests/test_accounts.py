@@ -2,7 +2,6 @@
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
 
 from our_pocket.db.schema import ENTRY_TYPES
 from our_pocket.services import AccountNotFound, AccountService
@@ -18,22 +17,20 @@ def test_unknown_account(conn):
 def test_export_name_is_stored_stripped(conn):
     created = AccountService(conn).add("Shared", "n26", export_account_name=" Alex & Sam 🫶 ")
     assert created.export_account_name == "Alex & Sam 🫶"
-    assert AccountService(conn).by_export_name("n26") == {"Alex & Sam 🫶": created}
+    assert AccountService(conn).get("Shared") == created
 
 
-def test_export_name_is_unique_per_household(conn):
+def test_two_members_can_use_the_same_export_name(conn):
     accounts = AccountService(conn)
-    accounts.add("A", "n26", export_account_name="Main")
-    with pytest.raises(IntegrityError), conn.begin_nested():
-        accounts.add("B", "n26", export_account_name="Main")
+    accounts.add("Alex Main", "n26", owner="Alex", export_account_name="Main")
+    sam = accounts.add("Sam Main", "n26", owner="Sam", export_account_name="Main")
+    assert sam.export_account_name == "Main"
 
 
-def test_two_households_can_use_the_same_export_name(conn):
+def test_one_owner_can_have_several_trade_republic_accounts(conn):
     accounts = AccountService(conn)
-    ours = accounts.add("Ours", "n26", export_account_name="Main")
-    theirs = accounts.add("Theirs", "n26", household_name="neighbours", export_account_name="Main")
-    assert accounts.by_export_name("n26") == {"Main": ours}
-    assert accounts.by_export_name("n26", "neighbours") == {"Main": theirs}
+    accounts.add("TR 1", "trade_republic", owner="Alex")
+    accounts.add("TR 2", "trade_republic", owner="Alex")
 
 
 @pytest.mark.parametrize("export_account_name", [None, "", "   "])
@@ -49,7 +46,17 @@ def test_trade_republic_account_refuses_an_export_name(conn):
 
 @pytest.mark.parametrize(
     "entry_type",
-    ["card_payment", "card_refund", "transfer_in", "transfer_out", "direct_debit", "fee", "tax"],
+    [
+        "card_payment",
+        "card_refund",
+        "transfer_in",
+        "transfer_out",
+        "space_transfer_in",
+        "space_transfer_out",
+        "direct_debit",
+        "fee",
+        "tax",
+    ],
 )
 def test_bank_entry_types_are_allowed(entry_type):
     assert entry_type in ENTRY_TYPES
@@ -62,7 +69,7 @@ def test_entry_type_check_in_the_database_allows_bank_types(conn):
             "WHERE conname = 'ck_ledger_entry_entry_type'"
         )
     ).scalar_one()
-    assert "'card_payment'" in definition and "'tax'" in definition
+    assert "'card_payment'" in definition and "'space_transfer_out'" in definition
 
 
 def test_check_constraints_have_the_names_schema_py_gives_them(conn):
@@ -77,13 +84,3 @@ def test_check_constraints_have_the_names_schema_py_gives_them(conn):
         "ck_import_batch_status",
         "ck_import_flag_severity",
     }
-
-
-def test_export_name_unique_constraint_has_its_own_name(conn):
-    columns = conn.execute(
-        text(
-            "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
-            "WHERE conname = 'uq_account_export_account_name'"
-        )
-    ).scalar_one()
-    assert columns == "UNIQUE (household_id, institution, export_account_name)"

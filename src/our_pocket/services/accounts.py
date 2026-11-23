@@ -1,7 +1,6 @@
 from sqlalchemy import Connection, Table, insert, select
 
 from our_pocket.db.schema import DEFAULT_HOUSEHOLD, account, household, person
-from our_pocket.etl.load import BatchStore
 from our_pocket.etl.models import Account
 from our_pocket.etl.registry import default_registry
 
@@ -65,22 +64,17 @@ class AccountService:
             raise AccountNotFound(f"no account named {name!r}")
         return Account(*row)
 
-    def by_export_name(
-        self, institution: str, household_name: str = DEFAULT_HOUSEHOLD
-    ) -> dict[str, Account]:
-        """One household's accounts of `institution`, keyed by their name inside the export."""
-        return BatchStore(self.conn).accounts_by_export_name(institution, household_name)
-
     @staticmethod
     def _check_export_name(institution: str, export_account_name: str | None) -> str | None:
-        """Routed formats (N26) need the account's name in the export; others can't use one."""
-        routed = {t.institution for t in default_registry() if t.account_column is not None}
+        """Formats whose rows name their account (N26) need that name, so imports can check
+        it; others can't use one."""
+        named = {t.institution for t in default_registry() if t.account_column is not None}
         name = (export_account_name or "").strip()
-        if institution in routed and not name:
+        if institution in named and not name:
             raise ValueError(
                 f"{institution} accounts need --export-name, the space name as in the export"
             )
-        if institution not in routed and export_account_name is not None:
+        if institution not in named and export_account_name is not None:
             raise ValueError(f"{institution} exports name no account; drop --export-name")
         return name or None
 

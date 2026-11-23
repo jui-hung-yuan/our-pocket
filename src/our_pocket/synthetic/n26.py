@@ -2,7 +2,8 @@
 
 Three invented spaces: a personal main account, a shared space and a savings space.
 Money moves between them every month, and both legs of each move are recorded in
-`transfer_pairs`: ground truth for transfer matching (P2). Values follow the real
+`transfer_pairs`. The other member of the shared space also pays into it from a space
+of theirs that isn't exported, so those moves have one leg only. Values follow the real
 export's shape (see our_pocket.etl.transform.n26): signed `Amount (EUR)` without
 trailing zeros, unsigned `Original Amount` on card rows only, dates without times.
 """
@@ -35,6 +36,10 @@ MAIN = "Alex Example"
 SHARED = "Alex & Sam Example 🫶"
 SAVINGS = "Savings Example"
 SPACES: tuple[str, str, str] = (MAIN, SHARED, SAVINGS)
+# The other member's space: a partner name only, never an `Account Name` here.
+OTHER_MEMBER_MAIN = "Sam Main Example"
+# A space deleted in the app; its rows turn up in the main space's export only.
+DELETED = "Old Trip Example"
 
 CENT = Decimal("0.01")
 SHOPS = ("Example Bakery", "Example Cafe", "Example Books", "Example Pharmacy")
@@ -90,9 +95,34 @@ class SyntheticN26:
         return _csv(self.space_rows(space, months))
 
     def mixed_csv_bytes(self) -> bytes:
-        """The main space's export with two shared-space rows appended, out of date order,
-        as seen once in a real export."""
-        return _csv(self.space_rows(MAIN) + self.space_rows(SHARED)[:2])
+        """The main space's export with two rows of a deleted space appended, out of date
+        order, as seen in a real export."""
+        day = self.start.isoformat()
+        blank = dict.fromkeys(HEADER, "")
+        deleted_rows = [
+            blank
+            | {
+                "Booking Date": day,
+                "Value Date": day,
+                "Partner Name": MAIN,
+                "Type": "Credit Transfer",
+                "Account Name": DELETED,
+                "Amount (EUR)": "40",
+            },
+            blank
+            | {
+                "Booking Date": day,
+                "Value Date": day,
+                "Partner Name": SHOPS[1],
+                "Type": "Presentment",
+                "Account Name": DELETED,
+                "Amount (EUR)": "-40",
+                "Original Amount": "40",
+                "Original Currency": "EUR",
+                "Exchange Rate": "1",
+            },
+        ]
+        return _csv(self.space_rows(MAIN) + deleted_rows)
 
 
 def _csv(rows: list[dict[str, str]]) -> bytes:
@@ -197,6 +227,14 @@ def generate(seed: int = 42, months: int = 14, start: date = date(2025, 1, 1)) -
         g._emit(first + timedelta(days=2), MAIN, "Direct Debit", Decimal(-85), partner=ENERGY)
         g._emit(first + timedelta(days=4), MAIN, "Direct Debit", Decimal("-29.99"), partner=TELECOM)
         g.move(first + timedelta(days=1), MAIN, SHARED, Decimal(600), "Household")
+        g._emit(
+            first + timedelta(days=1),
+            SHARED,
+            "Credit Transfer",
+            Decimal(400),
+            partner=(OTHER_MEMBER_MAIN, ""),
+            reference="Household",
+        )
         g.move(first + timedelta(days=3), SHARED, SAVINGS, Decimal(rng.choice((100, 150, 200))), "")
 
         for _ in range(6):

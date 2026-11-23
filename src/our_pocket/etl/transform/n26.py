@@ -1,14 +1,19 @@
 """N26 transaction CSV export.
 
-Conventions observed in real exports (see docs/decisions.md, D-018 to D-020):
+Conventions observed in real exports (see docs/decisions.md, D-019 to D-023):
 
-- One file per space, but a file can also hold rows of another space; `Account Name`
-  says which. The pipeline routes rows to accounts by it (`account_column`).
-- No transaction id, so `external_id` is a hash of the row's values (except the space name,
-  which can be renamed) plus its occurrence number within the space: identical rows (two
-  equal card payments on one day) are real and both count.
+- One file per space, imported into that space's account. `Account Name` says which space
+  a row is from; a deleted space's rows can turn up in Main's export. The pipeline flags
+  rows whose space isn't the account's (`account_column`).
+- No transaction id, so `external_id` is a hash of the row's values except names the user
+  can edit (the space name, and the partner name on moves between spaces), plus its
+  occurrence number within the file: identical rows (two equal card payments on one day)
+  are real and both count.
 - Dates only, no time. `Amount (EUR)` is signed. The FX columns are filled only on card
   rows: `Original Amount` is unsigned and |amount| = original x rate.
+- A transfer without a partner IBAN is a move between N26 spaces, and its partner name is
+  the other space's name. That space can belong to another member of a shared space, so
+  the name doesn't say whose it is.
 """
 
 import hashlib
@@ -48,12 +53,19 @@ TYPE_MAP: dict[str, str] = {
 }
 # MoneyBeam (N26's transfer to another N26 user) goes either way; its sign gives the type.
 MONEYBEAM = "MoneyBeam"
+# Transfers without a partner IBAN move money between N26 spaces.
+SPACE_TRANSFER: dict[str, str] = {
+    "transfer_in": "space_transfer_in",
+    "transfer_out": "space_transfer_out",
+}
 
 EXPECTED_SIGN: dict[str, int] = {
     "card_payment": -1,
     "card_refund": 1,
     "transfer_in": 1,
     "transfer_out": -1,
+    "space_transfer_in": 1,
+    "space_transfer_out": -1,
     "direct_debit": -1,
     "fee": -1,
     "interest": 1,
@@ -61,8 +73,10 @@ EXPECTED_SIGN: dict[str, int] = {
 }
 
 FX_COLUMNS = ("original amount", "original currency", "exchange rate")
-# Ledger ids are unique per account already, and a space can be renamed in the app.
+# Ledger ids are unique per account already, and a space can be renamed in the app; on a
+# move between spaces the partner name is a space name too.
 HASHED_COLUMNS = tuple(c for c in COLUMNS_V1 if c != "account name")
+SPACE_TRANSFER_HASHED_COLUMNS = tuple(c for c in HASHED_COLUMNS if c != "partner name")
 REQUIRED = ("booking date", "type", "amount (eur)", "account name")
 BERLIN = ZoneInfo("Europe/Berlin")
 TOLERANCE = Decimal("0.01")
@@ -72,22 +86,26 @@ class N26V1(Transformer):
     institution = "n26"
     schema_name = "transactions_csv"
     schema_version = 1
-    parser_version = "1"
+    parser_version = "2"
     columns = COLUMNS_V1
     account_column = "account name"
 
     def transform(self, rows: Sequence[RawRow]) -> list[ParsedRow]:
-        """Parse every row, then number identical rows per space so each gets its own id."""
-        occurrences: Counter[tuple[str, str]] = Counter()
+        """Parse every row, then number identical rows so each gets its own id."""
+        occurrences: Counter[str] = Counter()
         parsed = []
         for raw in rows:
             row = self.transform_row(raw)
+            hashed = (
+                SPACE_TRANSFER_HASHED_COLUMNS
+                if row.entry_type in SPACE_TRANSFER.values()
+                else HASHED_COLUMNS
+            )
             digest = hashlib.sha256(
-                "\x1f".join(raw.data.get(c, "") for c in HASHED_COLUMNS).encode()
+                "\x1f".join(raw.data.get(c, "") for c in hashed).encode()
             ).hexdigest()[:32]
-            space = raw.data.get(self.account_column or "", "").strip()
-            occurrences[space, digest] += 1
-            row.external_id = f"n26:{digest}:{occurrences[space, digest]}"
+            occurrences[digest] += 1
+            row.external_id = f"n26:{digest}:{occurrences[digest]}"
             parsed.append(row)
         return parsed
 
@@ -135,6 +153,8 @@ class N26V1(Transformer):
         entry_type = TYPE_MAP.get(row.source_type)
         if entry_type is None:
             row.flag("unknown_type", "error", f"unknown type {row.source_type!r}", "type")
+        elif entry_type in SPACE_TRANSFER and row.counterparty_iban is None:
+            return SPACE_TRANSFER[entry_type]
         return entry_type
 
     @staticmethod

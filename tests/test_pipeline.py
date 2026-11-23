@@ -14,13 +14,11 @@ from our_pocket.db.schema import (
     staged_row,
 )
 from our_pocket.etl.load import (
-    AccountNotAllowed,
     AccountRequired,
     BatchStore,
     CommitBlocked,
     DuplicateFile,
     InvalidBatchState,
-    UnknownExportAccount,
     UnknownFormat,
 )
 from our_pocket.etl.models import Account
@@ -34,8 +32,7 @@ pytestmark = pytest.mark.db
 
 
 def _stage(conn, export: SyntheticExport, account: Account, name: str = "tr.csv") -> int:
-    [batch_id] = ImportPipeline(conn).run(export.to_csv_bytes(), name, account)
-    return batch_id
+    return ImportPipeline(conn).run(export.to_csv_bytes(), name, account)
 
 
 def _count(conn, table, **where) -> int:
@@ -146,7 +143,7 @@ def test_unknown_schema_is_rejected_at_intake(conn, tr_account):
     content = (
         b'"Booking Date","Value Date","Partner Name","Amount (EUR)"\n"2025-01-01","","x","1"\n'
     )
-    [batch_id] = ImportPipeline(conn).run(content, "n26.csv", tr_account)
+    batch_id = ImportPipeline(conn).run(content, "n26.csv", tr_account)
     report = BatchStore(conn).report(batch_id)
     assert report.status == "rejected"
     assert report.schema_id is None
@@ -207,65 +204,23 @@ def _cash_by_account(conn) -> dict[str, Decimal]:
     return dict(rows)
 
 
-def _stage_n26(conn, content: bytes, name: str = "n26.csv") -> list[int]:
-    return ImportPipeline(conn).run(content, name)
+def _flag_codes(conn, batch_id: int) -> list[str]:
+    return [f["code"] for f in BatchStore(conn).report(batch_id).flags]
 
 
 def test_n26_end_to_end_balances_per_space(conn, n26_accounts, synthetic_n26: SyntheticN26):
     for space in SPACES:
-        [batch_id] = _stage_n26(conn, synthetic_n26.to_csv_bytes(space), f"{space}.csv")
+        content = synthetic_n26.to_csv_bytes(space)
+        batch_id = ImportPipeline(conn).run(content, f"{space}.csv", n26_accounts[space])
         BatchStore(conn).commit(batch_id)  # every new entry type passes the CHECK constraint
     assert _cash_by_account(conn) == {
         n26_accounts[space].name: balance for space, balance in synthetic_n26.balances().items()
     }
 
 
-def test_mixed_file_becomes_one_batch_per_space(conn, n26_accounts, synthetic_n26):
-    content = synthetic_n26.mixed_csv_bytes()
-    reports = [BatchStore(conn).report(b) for b in _stage_n26(conn, content, "mixed.csv")]
-    assert {r.account for r in reports} == {"N26 Main", "N26 Shared"}
-    assert {r.status for r in reports} == {"staged"}
-    assert sum(r.row_count for r in reports) == content.count(b"\n") - 1
-    shared = next(r for r in reports if r.account == "N26 Shared")
-    assert shared.row_count == 2
-
-
-def test_unmapped_space_stages_nothing(conn, synthetic_n26):
-    AccountService(conn).add("N26 Main", "n26", export_account_name=MAIN)
-    with pytest.raises(UnknownExportAccount) as excinfo:
-        _stage_n26(conn, synthetic_n26.mixed_csv_bytes())
-    assert excinfo.value.names == [SHARED]
-    assert "--export-name" in str(excinfo.value)
-    assert _count(conn, import_batch) == 0
-
-
-def test_n26_rows_go_to_the_given_households_accounts(conn, n26_accounts, synthetic_n26):
-    theirs = AccountService(conn).add(
-        "Their Main", "n26", household_name="neighbours", export_account_name=MAIN
-    )
-    [batch_id] = ImportPipeline(conn).run(
-        synthetic_n26.to_csv_bytes(MAIN), "n26.csv", household_name="neighbours"
-    )
-    assert BatchStore(conn).report(batch_id).account == theirs.name
-
-
-def test_unmapped_space_in_another_household_suggests_that_household(conn, synthetic_n26):
-    with pytest.raises(UnknownExportAccount) as excinfo:
-        ImportPipeline(conn).run(
-            synthetic_n26.to_csv_bytes(MAIN), "n26.csv", household_name="neighbours"
-        )
-    assert "--household 'neighbours'" in str(excinfo.value)
-
-
-def test_account_argument_is_refused_for_n26(conn, n26_accounts, synthetic_n26):
-    with pytest.raises(AccountNotAllowed):
-        ImportPipeline(conn).run(synthetic_n26.to_csv_bytes(MAIN), "n26.csv", n26_accounts[MAIN])
-    assert _count(conn, import_batch) == 0
-
-
-def test_trade_republic_still_needs_an_account(conn, synthetic):
+def test_n26_still_needs_an_account(conn, synthetic_n26):
     with pytest.raises(AccountRequired):
-        ImportPipeline(conn).run(synthetic.to_csv_bytes(), "tr.csv")
+        ImportPipeline(conn).run(synthetic_n26.to_csv_bytes(MAIN), "n26.csv")
     assert _count(conn, import_batch) == 0
 
 
@@ -275,10 +230,54 @@ def test_unknown_format_without_account_raises(conn):
     assert _count(conn, import_batch) == 0
 
 
+def test_deleted_space_rows_are_flagged_and_kept(conn, n26_accounts, synthetic_n26):
+    content = synthetic_n26.mixed_csv_bytes()
+    batch_id = ImportPipeline(conn).run(content, "main.csv", n26_accounts[MAIN])
+    assert _flag_codes(conn, batch_id) == ["unknown_space", "unknown_space"]
+    with pytest.raises(CommitBlocked):
+        BatchStore(conn).commit(batch_id)
+    result = BatchStore(conn).commit(batch_id, accept_warnings=True)
+    assert result.inserted == content.count(b"\n") - 1
+
+
+def test_wrong_account_flags_every_row(conn, n26_accounts, synthetic_n26):
+    batch_id = ImportPipeline(conn).run(
+        synthetic_n26.to_csv_bytes(SHARED), "shared.csv", n26_accounts[MAIN]
+    )
+    codes = _flag_codes(conn, batch_id)
+    assert codes == ["other_account"] * len(synthetic_n26.space_rows(SHARED))
+
+
+def test_rows_of_a_space_with_its_own_account_block_commit(conn, n26_accounts, synthetic_n26):
+    """Accepting them would count them twice: once here, once from their own export."""
+    shared_rows = synthetic_n26.to_csv_bytes(SHARED).split(b"\n", 1)[1]
+    content = synthetic_n26.to_csv_bytes(MAIN) + shared_rows
+    batch_id = ImportPipeline(conn).run(content, "main.csv", n26_accounts[MAIN])
+    assert set(_flag_codes(conn, batch_id)) == {"other_account"}
+    with pytest.raises(CommitBlocked):
+        BatchStore(conn).commit(batch_id, accept_warnings=True)
+
+
+def test_space_names_match_exactly_including_emoji(conn, synthetic_n26):
+    shared = AccountService(conn).add(
+        "Shared", "n26", export_account_name=SHARED.replace(" 🫶", "")
+    )
+    batch_id = ImportPipeline(conn).run(synthetic_n26.to_csv_bytes(SHARED), "shared.csv", shared)
+    assert set(_flag_codes(conn, batch_id)) == {"unknown_space"}
+
+
+def test_two_members_spaces_can_share_a_name(conn, n26_accounts, synthetic_n26):
+    """Each member's export calls their own main space by the same default name."""
+    sam_main = AccountService(conn).add("Sam Main", "n26", owner="Sam", export_account_name=MAIN)
+    batch_id = ImportPipeline(conn).run(synthetic_n26.to_csv_bytes(MAIN), "sam.csv", sam_main)
+    assert _flag_codes(conn, batch_id) == []
+
+
 def test_overlapping_n26_export_adds_nothing(conn, n26_accounts, synthetic_n26):
-    [first] = _stage_n26(conn, synthetic_n26.to_csv_bytes(MAIN, months=9), "jan-sep.csv")
+    main = n26_accounts[MAIN]
+    first = ImportPipeline(conn).run(synthetic_n26.to_csv_bytes(MAIN, months=9), "a.csv", main)
     BatchStore(conn).commit(first)
-    [full] = _stage_n26(conn, synthetic_n26.to_csv_bytes(MAIN), "jan-feb-next-year.csv")
+    full = ImportPipeline(conn).run(synthetic_n26.to_csv_bytes(MAIN), "b.csv", main)
     overlap = len(synthetic_n26.space_rows(MAIN, months=9))
     assert BatchStore(conn).report(full).duplicate_count == overlap
     result = BatchStore(conn).commit(full)
@@ -287,64 +286,3 @@ def test_overlapping_n26_export_adds_nothing(conn, n26_accounts, synthetic_n26):
         overlap,
     )
     assert _count(conn, ledger_entry) == len(synthetic_n26.space_rows(MAIN))
-
-
-def test_duplicate_mixed_file_stages_nothing(conn, n26_accounts, synthetic_n26):
-    content = synthetic_n26.mixed_csv_bytes()
-    _stage_n26(conn, content)
-    batches = _count(conn, import_batch)
-    with pytest.raises(DuplicateFile):
-        _stage_n26(conn, content)
-    assert _count(conn, import_batch) == batches
-
-
-def _batches_by_account(conn, batch_ids: list[int]) -> dict[str, int]:
-    return {BatchStore(conn).report(b).account: b for b in batch_ids}
-
-
-def test_rejected_space_of_a_mixed_file_can_be_reimported(conn, n26_accounts, synthetic_n26):
-    content = synthetic_n26.mixed_csv_bytes()
-    batches = _batches_by_account(conn, _stage_n26(conn, content))
-    BatchStore(conn).commit(batches["N26 Shared"])
-    BatchStore(conn).reject(batches["N26 Main"], "parser fix pending")
-    assert list(_batches_by_account(conn, _stage_n26(conn, content))) == ["N26 Main"]
-
-
-def test_fully_committed_mixed_file_is_refused(conn, n26_accounts, synthetic_n26):
-    content = synthetic_n26.mixed_csv_bytes()
-    for batch_id in _stage_n26(conn, content):
-        BatchStore(conn).commit(batch_id)
-    with pytest.raises(DuplicateFile, match="committed"):
-        _stage_n26(conn, content)
-
-
-def test_mixed_file_rows_are_duplicates_in_the_space_export(conn, n26_accounts, synthetic_n26):
-    batches = _batches_by_account(conn, _stage_n26(conn, synthetic_n26.mixed_csv_bytes()))
-    BatchStore(conn).commit(batches["N26 Shared"])
-    [shared] = _stage_n26(conn, synthetic_n26.to_csv_bytes(SHARED), "shared.csv")
-    assert BatchStore(conn).report(shared).duplicate_count == 2
-
-
-def test_empty_space_name_gets_no_account_add_suggestion(conn, n26_accounts, synthetic_n26):
-    content = synthetic_n26.to_csv_bytes(MAIN).replace(MAIN.encode(), b"", 1)
-    with pytest.raises(UnknownExportAccount) as excinfo:
-        _stage_n26(conn, content)
-    assert excinfo.value.names == [""]
-    assert "--export-name ''" not in str(excinfo.value)
-
-
-def test_space_names_match_exactly_including_emoji(conn, synthetic_n26):
-    AccountService(conn).add("N26 Main", "n26", export_account_name=MAIN)
-    AccountService(conn).add("Wrong", "n26", export_account_name=SHARED.replace(" 🫶", ""))
-    with pytest.raises(UnknownExportAccount) as excinfo:
-        _stage_n26(conn, synthetic_n26.mixed_csv_bytes())
-    assert excinfo.value.names == [SHARED]
-    assert repr(SHARED) in str(excinfo.value)
-
-
-def test_routing_ignores_other_households(conn, synthetic_n26):
-    AccountService(conn).add(
-        "Their Main", "n26", household_name="neighbours", export_account_name=MAIN
-    )
-    with pytest.raises(UnknownExportAccount):
-        _stage_n26(conn, synthetic_n26.to_csv_bytes(MAIN))

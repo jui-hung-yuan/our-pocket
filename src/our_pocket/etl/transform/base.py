@@ -26,8 +26,8 @@ class Transformer(ABC):
     parser_version: ClassVar[str]
     columns: ClassVar[tuple[str, ...]]
     delimiter: ClassVar[str] = ","
-    # Column naming the account each row belongs to, for exports that hold several
-    # accounts in one file (N26 spaces). None: the whole file is one account.
+    # Column naming the account each row belongs to (N26 spaces). Rows naming another
+    # account than the one imported into are flagged. None: the export names no account.
     account_column: ClassVar[str | None] = None
 
     @property

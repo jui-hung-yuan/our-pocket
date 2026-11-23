@@ -73,6 +73,8 @@ ENTRY_TYPES = (
     "card_refund",
     "transfer_in",
     "transfer_out",
+    "space_transfer_in",
+    "space_transfer_out",
     "direct_debit",
     "fee",
     "tax",
@@ -133,12 +135,10 @@ account = Table(
     Column("name", Text, nullable=False, unique=True),
     Column("currency", Text, nullable=False, server_default="EUR"),
     # The account's name inside the export, for formats that hold several accounts per
-    # file (N26 spaces, in the `Account Name` column). NULL when the export has none.
+    # file (N26 spaces, in the `Account Name` column), checked on import. NULL when the
+    # export has none. Not unique: two members' spaces share default names ("Main Account").
     Column("export_account_name", Text),
     _created_at(),
-    UniqueConstraint(
-        "household_id", "institution", "export_account_name", name="uq_account_export_account_name"
-    ),
     schema=CORE,
 )
 

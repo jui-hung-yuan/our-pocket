@@ -6,7 +6,6 @@ ledger_entry (L3). Every ledger entry keeps a link to its staged row, raw row an
 """
 
 from collections import Counter
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -14,9 +13,7 @@ from sqlalchemy import Connection, Row, func, insert, literal, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from our_pocket.db.schema import (
-    DEFAULT_HOUSEHOLD,
     account,
-    household,
     import_batch,
     import_flag,
     ledger_entry,
@@ -24,7 +21,7 @@ from our_pocket.db.schema import (
     staged_row,
 )
 from our_pocket.etl.extract import RawFile
-from our_pocket.etl.models import ENTRY_FIELDS, Account, Flag, ParsedRow, RawRow
+from our_pocket.etl.models import ENTRY_FIELDS, Account, Flag, ParsedRow
 from our_pocket.etl.transform import Transformer
 
 
@@ -46,28 +43,6 @@ class UnknownFormat(BatchError):
 
 class AccountRequired(BatchError):
     """The format holds one account per file, so the import must name it."""
-
-
-class AccountNotAllowed(BatchError):
-    """The format names each row's account itself; an account argument would be ignored."""
-
-
-class UnknownExportAccount(BatchError):
-    """Rows name accounts (e.g. N26 spaces) that no account is mapped to."""
-
-    def __init__(self, institution: str, names: list[str], household_name: str) -> None:
-        self.names = names
-        shown = ", ".join(repr(n) if n else "(empty)" for n in names)
-        household_option = (
-            "" if household_name == DEFAULT_HOUSEHOLD else f" --household {household_name!r}"
-        )
-        commands = "\n".join(
-            f'  our-pocket account add "<name>" --institution {institution}'
-            f"{household_option} --export-name {n!r}"
-            for n in names
-            if n  # rows without a space name can't be routed; the file needs fixing
-        )
-        super().__init__(f"no {institution} account for {shown}; add one each:\n{commands}")
 
 
 class CommitBlocked(BatchError):
@@ -141,26 +116,18 @@ class BatchStore:
         self.conn.execute(insert(import_flag).values(self._flag_values(batch_id, flag)))
         return batch_id
 
-    def accounts_by_export_name(
-        self, institution: str, household_name: str = DEFAULT_HOUSEHOLD
-    ) -> dict[str, Account]:
-        """One household's accounts of `institution`, keyed by their name inside the export."""
+    def other_export_names(self, imported_into: Account) -> dict[str, str]:
+        """Export name → account name of the household's other accounts at the same
+        institution."""
         rows = self.conn.execute(
-            select(
-                account.c.id,
-                account.c.name,
-                account.c.institution,
-                account.c.household_id,
-                account.c.export_account_name,
-            )
-            .join(household, household.c.id == account.c.household_id)
-            .where(
-                household.c.name == household_name,
-                account.c.institution == institution,
+            select(account.c.export_account_name, account.c.name).where(
+                account.c.household_id == imported_into.household_id,
+                account.c.institution == imported_into.institution,
                 account.c.export_account_name.is_not(None),
+                account.c.id != imported_into.id,
             )
         ).all()
-        return {row.export_account_name: Account(*row) for row in rows}
+        return {export_name: name for export_name, name in rows}
 
     def stage(
         self,
@@ -168,10 +135,8 @@ class BatchStore:
         raw_file: RawFile,
         transformer: Transformer,
         parsed: list[ParsedRow],
-        rows: Sequence[RawRow] | None = None,
     ) -> int:
-        """Stage `rows` (default: the whole file) with their parsed rows, in the same order."""
-        rows = raw_file.rows if rows is None else rows
+        """Stage the file's rows with their parsed rows, in the same order."""
         batch_id = self._insert_batch(
             account,
             raw_file,
@@ -179,9 +144,9 @@ class BatchStore:
             schema_version=transformer.schema_version,
             parser_version=transformer.parser_version,
             status="staged",
-            row_count=len(rows),
+            row_count=len(raw_file.rows),
         )
-        if not rows:
+        if not raw_file.rows:
             return batch_id
 
         raw_ids = (
@@ -189,7 +154,7 @@ class BatchStore:
                 insert(raw_row).returning(raw_row.c.id, sort_by_parameter_order=True),
                 [
                     {"batch_id": batch_id, "line_number": r.line_number, "data": r.data}
-                    for r in rows
+                    for r in raw_file.rows
                 ],
             )
             .scalars()

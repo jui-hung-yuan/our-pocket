@@ -212,6 +212,7 @@ adds the column and the bank entry types (`card_payment`, `card_refund`, `transf
 **Why:** ownership is per space (a shared space is joint, `owner_person_id = NULL`), and most
 transfers are between spaces, which P2 can only match if they're movements between accounts.
 Real exports are mostly one file per space but can include rows of another space (Q4).
+*Superseded by D-022: imports name their account, and `Account Name` is only checked.*
 
 ### D-019: N26 external id is a content hash plus an occurrence number
 *2026-11-22*
@@ -227,6 +228,7 @@ be renamed in the app, which would otherwise give every overlapping row a new id
 whole days, so a group of identical rows is never split between overlapping exports, and their
 numbers match. **Limit:** if N26 edits a past row (a cleaned-up merchant name), a re-export gives
 it a new id and it's imported twice.
+*Partner name on space moves and numbering per space superseded by D-023.*
 
 ### D-020: N26 fees and taxes go in the `fee` and `tax` columns
 *2026-11-22*
@@ -238,3 +240,57 @@ have no time, so `booked_at` is the booking date at 00:00 Europe/Berlin.
 
 **Why:** `cash_effect = amount + fee + tax` then holds across institutions, and tax totals cover
 N26 too.
+
+### D-021: Flag moves between N26 spaces; don't pair transfer legs
+*2026-11-23*
+
+**Chose:** an N26 Credit or Debit Transfer without a partner IBAN is typed `space_transfer_in` or
+`space_transfer_out` (parser v2, migration 0004). Every other transfer stays `transfer_in` or
+`transfer_out`. Nothing links the two legs of a move.
+
+**Over:** matching transfer pairs across accounts by amount and date (the original P2), with
+precision/recall targets.
+
+**Why:** balances and net worth are right without any link, because the two legs cancel. What
+breaks without help is one-sided totals (spending, income), and a flag is enough to keep space
+moves out of those. In the real exports the rule has no exceptions: every transfer without an
+IBAN names a space, and none with an IBAN does. Pairing would also fail often: most moves
+involving the shared space go to or from the other member's spaces, which aren't imported yet.
+Transfers to other institutions (N26 → Trade Republic) stay ordinary outflows and inflows.
+
+### D-022: N26 imports name their account; `Account Name` is only checked
+*2026-11-23*
+
+**Chose:** an N26 file is imported with `--account`, like Trade Republic: one file, one account,
+one batch. A row whose `Account Name` is another account's export name is an `other_account`
+error; any other foreign space name is an `unknown_space` warning, and accepting it keeps the
+row in this account. Export names are no longer unique (migration 0004).
+
+**Over:** routing rows to accounts by `Account Name` (D-018), which then needed `--owner` and
+per-owner uniqueness once a second member's spaces are imported: both members' exports call
+their main space by the same default name.
+
+**Why:** exports are one file per space. The rows of another space that do turn up come from a
+deleted space and belong to Main anyway; transfers between it and Main have both legs in Main
+and cancel. Rows of a space that has its own account would count twice, so they block commit;
+that also catches a file imported into the wrong account.
+
+### D-023: N26 ids leave out the partner name on space moves; numbered per file
+*2026-11-23*
+
+**Chose:** on a `space_transfer_*` row the hash skips `Partner Name` as well as `Account Name`.
+Identical rows are numbered within the file instead of within the space.
+
+**Over:** hashing `Partner Name` on every row (D-019).
+
+**Why:** on a space move the partner name is a space name, which the user can rename; if N26
+shows the new name on old rows, an overlapping re-import would add them again. Numbering per
+file follows from D-022: a file goes into one account, so a deleted space's row identical to a
+Main row needs its own number. **Limit:** two moves on one day with the same amount and reference
+are told apart only by their order in the file.
+
+### D-024: `account add` needs `--owner` or `--joint`
+*2026-11-23*
+
+**Chose:** the CLI requires exactly one of them. **Over:** a missing `--owner` meaning joint.
+**Why:** a forgotten flag silently made a personal account joint, visible to the whole household.

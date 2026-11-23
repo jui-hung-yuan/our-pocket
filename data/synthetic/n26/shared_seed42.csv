@@ -1,17 +1,20 @@
 Booking Date,Value Date,Partner Name,Partner Iban,Type,Payment Reference,Account Name,Amount (EUR),Original Amount,Original Currency,Exchange Rate
 2025-01-02,2025-01-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-01-02,2025-01-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-01-04,2025-01-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-200,,,
 2025-01-04,2025-01-04,Example Organic,,Presentment,,Alex & Sam Example 🫶,-79.42,79.42,EUR,1
 2025-01-07,2025-01-06,Example Organic,,Presentment,,Alex & Sam Example 🫶,-18.37,18.37,EUR,1
 2025-01-09,2025-01-09,Example Market,,Presentment,,Alex & Sam Example 🫶,-72.16,72.16,EUR,1
 2025-01-23,2025-01-23,Example Organic,,Presentment,,Alex & Sam Example 🫶,-37.87,37.87,EUR,1
 2025-02-02,2025-02-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-02-02,2025-02-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-02-04,2025-02-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-100,,,
 2025-02-12,2025-02-12,Example Market,,Presentment,,Alex & Sam Example 🫶,-40.32,40.32,EUR,1
 2025-02-18,2025-02-18,Example Discount,,Presentment,,Alex & Sam Example 🫶,-30.05,30.05,EUR,1
 2025-02-21,2025-02-21,Example Market,,Presentment,,Alex & Sam Example 🫶,-59.9,59.9,EUR,1
 2025-02-22,2025-02-22,Example Organic,,Presentment,,Alex & Sam Example 🫶,-67.49,67.49,EUR,1
 2025-03-02,2025-03-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-03-02,2025-03-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-03-02,2025-03-02,Example Market,,Presentment,,Alex & Sam Example 🫶,-22.52,22.52,EUR,1
 2025-03-04,2025-03-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-200,,,
 2025-03-05,2025-03-04,Example Discount,,Presentment,,Alex & Sam Example 🫶,-50.42,50.42,EUR,1
@@ -19,41 +22,48 @@ Booking Date,Value Date,Partner Name,Partner Iban,Type,Payment Reference,Account
 2025-03-26,2025-03-26,Example Discount,,Presentment,,Alex & Sam Example 🫶,-44.58,44.58,EUR,1
 2025-04-01,2025-04-01,Example Market,,Presentment,,Alex & Sam Example 🫶,-86.11,86.11,EUR,1
 2025-04-02,2025-04-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-04-02,2025-04-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-04-04,2025-04-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-200,,,
 2025-04-06,2025-04-06,Example Discount,,Presentment,,Alex & Sam Example 🫶,-88.11,88.11,EUR,1
 2025-04-17,2025-04-17,Example Market,,Presentment,,Alex & Sam Example 🫶,-59.06,59.06,EUR,1
 2025-04-27,2025-04-26,Example Organic,,Presentment,,Alex & Sam Example 🫶,-29.61,29.61,EUR,1
 2025-05-02,2025-05-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-05-02,2025-05-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-05-02,2025-05-02,Example Organic,,Presentment,,Alex & Sam Example 🫶,-15.8,15.8,EUR,1
 2025-05-04,2025-05-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-150,,,
 2025-05-11,2025-05-11,Example Market,,Presentment,,Alex & Sam Example 🫶,-58.19,58.19,EUR,1
 2025-05-19,2025-05-18,Example Market,,Presentment,,Alex & Sam Example 🫶,-10.58,10.58,EUR,1
 2025-05-21,2025-05-20,Example Market,,Presentment,,Alex & Sam Example 🫶,-28.75,28.75,EUR,1
 2025-06-02,2025-06-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-06-02,2025-06-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-06-03,2025-06-03,Example Organic,,Presentment,,Alex & Sam Example 🫶,-76.19,76.19,EUR,1
 2025-06-04,2025-06-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-100,,,
 2025-06-09,2025-06-09,Example Organic,,Presentment,,Alex & Sam Example 🫶,-30.46,30.46,EUR,1
 2025-06-18,2025-06-18,Example Organic,,Presentment,,Alex & Sam Example 🫶,-21.48,21.48,EUR,1
 2025-06-18,2025-06-18,Example Market,,Presentment,,Alex & Sam Example 🫶,-14.14,14.14,EUR,1
 2025-07-02,2025-07-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-07-02,2025-07-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-07-02,2025-07-01,Example Discount,,Presentment,,Alex & Sam Example 🫶,-35.69,35.69,EUR,1
 2025-07-03,2025-07-03,Example Market,,Presentment,,Alex & Sam Example 🫶,-15.61,15.61,EUR,1
 2025-07-04,2025-07-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-100,,,
 2025-07-17,2025-07-17,Example Market,,Presentment,,Alex & Sam Example 🫶,-14.65,14.65,EUR,1
 2025-07-19,2025-07-19,Example Organic,,Presentment,,Alex & Sam Example 🫶,-51.19,51.19,EUR,1
 2025-08-02,2025-08-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-08-02,2025-08-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-08-03,2025-08-03,Example Market,,Presentment,,Alex & Sam Example 🫶,-40.27,40.27,EUR,1
 2025-08-04,2025-08-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-200,,,
 2025-08-15,2025-08-15,Example Discount,,Presentment,,Alex & Sam Example 🫶,-67.63,67.63,EUR,1
 2025-08-17,2025-08-17,Example Organic,,Presentment,,Alex & Sam Example 🫶,-20.85,20.85,EUR,1
 2025-08-26,2025-08-25,Example Discount,,Presentment,,Alex & Sam Example 🫶,-53.33,53.33,EUR,1
 2025-09-02,2025-09-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-09-02,2025-09-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-09-04,2025-09-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-150,,,
 2025-09-06,2025-09-06,Example Discount,,Presentment,,Alex & Sam Example 🫶,-46.19,46.19,EUR,1
 2025-09-12,2025-09-11,Example Discount,,Presentment,,Alex & Sam Example 🫶,-55.26,55.26,EUR,1
 2025-09-14,2025-09-13,Example Discount,,Presentment,,Alex & Sam Example 🫶,-10.79,10.79,EUR,1
 2025-09-23,2025-09-22,Example Market,,Presentment,,Alex & Sam Example 🫶,-54.69,54.69,EUR,1
 2025-10-02,2025-10-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-10-02,2025-10-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-10-04,2025-10-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-150,,,
 2025-10-15,2025-10-15,Example Organic,,Presentment,,Alex & Sam Example 🫶,-35,35,EUR,1
 2025-10-23,2025-10-23,Example Market,,Presentment,,Alex & Sam Example 🫶,-41.33,41.33,EUR,1
@@ -61,23 +71,27 @@ Booking Date,Value Date,Partner Name,Partner Iban,Type,Payment Reference,Account
 2025-10-28,2025-10-27,Example Market,,Presentment,,Alex & Sam Example 🫶,-28.26,28.26,EUR,1
 2025-11-01,2025-11-01,Example Discount,,Presentment,,Alex & Sam Example 🫶,-85.82,85.82,EUR,1
 2025-11-02,2025-11-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-11-02,2025-11-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-11-04,2025-11-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-100,,,
 2025-11-07,2025-11-07,Example Organic,,Presentment,,Alex & Sam Example 🫶,-13.63,13.63,EUR,1
 2025-11-22,2025-11-22,Example Discount,,Presentment,,Alex & Sam Example 🫶,-87.02,87.02,EUR,1
 2025-11-22,2025-11-22,Example Market,,Presentment,,Alex & Sam Example 🫶,-39.83,39.83,EUR,1
 2025-12-02,2025-12-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2025-12-02,2025-12-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2025-12-04,2025-12-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-150,,,
 2025-12-10,2025-12-10,Example Discount,,Presentment,,Alex & Sam Example 🫶,-64.38,64.38,EUR,1
 2025-12-11,2025-12-11,Example Market,,Presentment,,Alex & Sam Example 🫶,-77.04,77.04,EUR,1
 2025-12-22,2025-12-22,Example Market,,Presentment,,Alex & Sam Example 🫶,-51.87,51.87,EUR,1
 2025-12-26,2025-12-26,Example Discount,,Presentment,,Alex & Sam Example 🫶,-23.9,23.9,EUR,1
 2026-01-02,2026-01-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2026-01-02,2026-01-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2026-01-04,2026-01-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-100,,,
 2026-01-15,2026-01-15,Example Discount,,Presentment,,Alex & Sam Example 🫶,-53.51,53.51,EUR,1
 2026-01-15,2026-01-15,Example Discount,,Presentment,,Alex & Sam Example 🫶,-76.76,76.76,EUR,1
 2026-01-20,2026-01-20,Example Organic,,Presentment,,Alex & Sam Example 🫶,-87.82,87.82,EUR,1
 2026-01-28,2026-01-27,Example Market,,Presentment,,Alex & Sam Example 🫶,-47.39,47.39,EUR,1
 2026-02-02,2026-02-02,Alex Example,,Credit Transfer,Household,Alex & Sam Example 🫶,600,,,
+2026-02-02,2026-02-02,Sam Main Example,,Credit Transfer,Household,Alex & Sam Example 🫶,400,,,
 2026-02-04,2026-02-04,Savings Example,,Debit Transfer,,Alex & Sam Example 🫶,-200,,,
 2026-02-07,2026-02-07,Example Organic,,Presentment,,Alex & Sam Example 🫶,-41.9,41.9,EUR,1
 2026-02-11,2026-02-11,Example Discount,,Presentment,,Alex & Sam Example 🫶,-48.16,48.16,EUR,1

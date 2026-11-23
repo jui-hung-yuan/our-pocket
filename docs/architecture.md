@@ -243,11 +243,10 @@ sequenceDiagram
     B->>DB: INSERT ledger_entry SELECT … FROM staged_row ON CONFLICT DO NOTHING
 ```
 
-**N26 (`our-pocket import n26.csv`, no `--account`):** `N26V1.account_column` is
-`"account name"`, so the pipeline groups rows by that column and looks up the account per group by
-`export_account_name` within the `--household` (D-018). Every group needs an account, and no
-group may have this file staged already (groups committed from it are skipped); only then is the
-whole file transformed once and each remaining group staged as its own batch.
+**N26:** imported with `--account` like Trade Republic. `N26V1.account_column` is
+`"account name"`, so after transforming, the pipeline checks each row's space against the
+account's `export_account_name`: another account's space is an `other_account` error, an unknown
+one an `unknown_space` warning (D-022).
 
 ## 5. Where data lives
 
@@ -258,14 +257,14 @@ Each layer has its own Postgres schema (D-017).
 | L0 file | `staging.import_batch` (sha256, signature) | `BatchStore` | audit |
 | L1 raw | `raw.raw_row`: append-only, enforced by a trigger | `BatchStore.stage` | re-parsing, audit |
 | L2 staged | `staging.staged_row`, `staging.import_flag` | `BatchStore.stage` | review (`batch show`), `commit` |
-| L3 ledger | `core.ledger_entry` (accounts also in `core`; `export_account_name` maps N26 spaces) | `BatchStore.commit` | `LedgerService` only |
+| L3 ledger | `core.ledger_entry` (accounts also in `core`; `export_account_name` names N26 spaces) | `BatchStore.commit` | `LedgerService` only |
 
 ## 6. Adding things
 
 **A new institution (e.g. comdirect):**
 1. `etl/transform/comdirect.py`: `class ComdirectV1(Transformer)` with its `institution`,
    `columns` and `transform_row`. Reuse the base helpers (`decimal`, `iso_date`, `require`). Set
-   `account_column` if one file holds several accounts.
+   `account_column` if rows name their account, so imports check it.
 2. Register it in `etl/registry.py:default_registry()`.
 3. `synthetic/comdirect.py`: a seeded generator, with its files in `synthetic.FIXTURES`.
 4. Tests: the transformer on synthetic rows plus perturbations; one end-to-end pipeline test.
@@ -298,9 +297,9 @@ Row-level security in Postgres then limits each household member to their own ro
 | `etl/transform/validators.py` | ISIN and IBAN check digits |
 | `etl/registry.py` | `FormatRegistry`, `default_registry()` |
 | `etl/load/batch_store.py` | `BatchStore`: stage / commit / reject / report |
-| `etl/pipeline.py` | `ImportPipeline`: extract → identify → route rows to accounts → transform → stage |
+| `etl/pipeline.py` | `ImportPipeline`: extract → identify → transform → check the account → stage |
 | `services/accounts.py` | `AccountService`: create and look up accounts |
 | `services/ledger.py` | `LedgerService`: read-only queries over the ledger |
 | `interfaces/cli.py` | `our-pocket` command line |
 | `synthetic/trade_republic.py` | Seeded generator for Trade Republic test exports |
-| `synthetic/n26.py` | Seeded generator for N26 exports: three spaces, transfer pairs between them |
+| `synthetic/n26.py` | Seeded generator for N26 exports: three spaces, moves between them, and one-legged moves from another member's space |
