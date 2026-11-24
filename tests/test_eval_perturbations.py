@@ -14,6 +14,7 @@ import io
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -57,6 +58,14 @@ def break_check_digit(column: str, position: int) -> Mutation:
         value = rows[index][column]
         digit = str((int(value[position]) + 1) % 10)
         rows[index][column] = value[:position] + digit + value[position + 1 :]
+
+    return mutate
+
+
+def shift_date(column: str, days: int) -> Mutation:
+    def mutate(rows: Rows, index: int) -> None:
+        moved = date.fromisoformat(rows[index][column]) + timedelta(days=days)
+        rows[index][column] = moved.isoformat()
 
     return mutate
 
@@ -109,6 +118,24 @@ TRADE_REPUBLIC_DEFECTS = [
         ("error", "unparseable_value"),
     ),
     Defect("German date", "BUY", {"date": "02.01.2025"}, ("error", "unparseable_value")),
+    Defect(
+        "booking date a week early",
+        "BUY",
+        shift_date("date", -7),
+        ("warning", "booking_date_mismatch"),
+    ),
+    Defect(
+        "booking date after the timestamp",
+        "BUY",
+        shift_date("date", 1),
+        ("warning", "booking_date_mismatch"),
+    ),
+    Defect(
+        "tax refund booked too early",
+        "TAX_OPTIMIZATION",
+        shift_date("date", -4),  # already a day early on clean data
+        ("warning", "booking_date_mismatch"),
+    ),
     Defect("currency not ISO", "BUY", {"currency": "euro"}, ("error", "invalid_currency")),
     Defect("ISIN check digit", "BUY", break_check_digit("symbol", -1), ("error", "invalid_isin")),
     Defect(
@@ -227,8 +254,6 @@ BLIND_SPOTS = {
         # Shares and amount scaled together still satisfy amount = shares x price.
         Defect("buy shares and amount scaled [position reconciliation]", "BUY",
                scale(("shares", "amount"), "2"), None),
-        # `date` isn't compared with `datetime`; they may differ by one day (late trades).
-        Defect("booking date moved a week [no check yet]", "BUY", {"date": "2025-01-09"}, None),
     ],
     "n26": [
         # A card amount changed together with its original amount is self-consistent.

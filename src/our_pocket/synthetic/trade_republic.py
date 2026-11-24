@@ -23,6 +23,8 @@ from our_pocket.etl.transform.trade_republic import COLUMNS_V1
 from our_pocket.etl.transform.validators import isin_check_digit
 
 BERLIN = ZoneInfo("Europe/Berlin")
+# Real exports book these a day before the Berlin date of their timestamp (D-028).
+BOOKED_A_DAY_EARLY = frozenset({"TAX_OPTIMIZATION"})
 CENT = Decimal("0.01")
 MICRO = Decimal("0.000001")
 QTY = Decimal("0.0000000001")
@@ -116,6 +118,7 @@ class _Generator:
 
     def _emit(self, day: date, tr_type: str, **fields: Decimal | str | None) -> None:
         ts = self._timestamp(day)
+        lag = 1 if tr_type in BOOKED_A_DAY_EARLY else 0
         # Real exports mix microsecond and millisecond precision.
         stamp = ts.strftime("%Y-%m-%dT%H:%M:%S.%f")
         if self.rng.random() < 0.5:
@@ -123,7 +126,7 @@ class _Generator:
         row = dict.fromkeys(COLUMNS_V1, "")
         row.update(
             datetime=stamp + "Z",
-            date=ts.astimezone(BERLIN).date().isoformat(),
+            date=(ts.astimezone(BERLIN).date() - timedelta(days=lag)).isoformat(),
             account_type="DEFAULT",
             category="TRADING" if tr_type in ("BUY", "SELL") else "CASH",
             type=tr_type,

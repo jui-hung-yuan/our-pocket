@@ -5,10 +5,12 @@ import pytest
 
 from our_pocket.etl.models import RawRow
 from our_pocket.etl.transform.trade_republic import (
+    BERLIN,
     TYPE_MAP,
     UNVERIFIED_CASH_TYPES,
     TradeRepublicV1,
 )
+from our_pocket.synthetic.trade_republic import BOOKED_A_DAY_EARLY
 
 PARSER = TradeRepublicV1()
 
@@ -59,9 +61,19 @@ def test_foreign_dividend_keeps_original_currency(synthetic):
 
 def test_booking_date_is_the_local_date_not_the_utc_date(synthetic):
     parsed = PARSER.transform(_raw(synthetic))
-    shifted = [p for p in parsed if p.booking_date != p.booked_at.date()]
+    on_time = [p for p in parsed if p.source_type not in BOOKED_A_DAY_EARLY]
+    shifted = [p for p in on_time if p.booking_date != p.booked_at.date()]
     assert shifted, "generator should produce late-evening trades booked on the next local day"
     assert all(p.booking_date > p.booked_at.date() for p in shifted)
+
+
+def test_booking_date_a_day_before_the_timestamp_is_normal(synthetic):
+    """Real exports book some rows (tax refunds most often) before their timestamp (D-028)."""
+    parsed = PARSER.transform(_raw(synthetic))
+    early = [p for p in parsed if p.source_type in BOOKED_A_DAY_EARLY]
+    assert early
+    assert all(p.booking_date < p.booked_at.astimezone(BERLIN).date() for p in early)
+    assert not any(f.code == "booking_date_mismatch" for p in early for f in p.flags)
 
 
 @pytest.mark.parametrize(

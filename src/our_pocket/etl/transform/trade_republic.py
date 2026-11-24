@@ -6,12 +6,15 @@ Conventions observed in real exports (see docs/decisions.md, D-007):
   are separate signed columns, negative when they cost money.
 - BUY: shares > 0, amount = -(shares * price). SELL: shares < 0, amount = |shares| * price.
 - Foreign-currency dividends: amount = original_amount * fx_rate.
-- `datetime` is UTC; `date` is the local booking date and can differ near midnight.
+- `datetime` is UTC; `date` is the booking date. It is usually the Berlin date of
+  `datetime`, but can be a few days earlier, never later (D-028).
 - Tax-only rows (TAX_OPTIMIZATION, EARNINGS, PRE_DETERMINED_TAX_BASE) have amount 0 and
   carry the money in `tax` (D-016).
 """
 
+from datetime import timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from our_pocket.etl.models import ParsedRow, RawRow
 from our_pocket.etl.transform.base import Transformer
@@ -88,6 +91,11 @@ REQUIRED_BY_ENTRY_TYPE = {
 
 TOLERANCE = Decimal("0.01")
 
+BERLIN = ZoneInfo("Europe/Berlin")
+# How far `date` may fall before the Berlin date of `datetime`. Real exports show up to 2
+# days; 4 covers a long weekend (D-028).
+MAX_BOOKING_LAG = timedelta(days=4)
+
 
 def _sign(value: Decimal) -> int:
     return (value > 0) - (value < 0)
@@ -97,7 +105,7 @@ class TradeRepublicV1(Transformer):
     institution = "trade_republic"
     schema_name = "transactions_csv"
     schema_version = 1
-    parser_version = "2"
+    parser_version = "3"
     columns = COLUMNS_V1
 
     def transform_row(self, raw: RawRow) -> ParsedRow:
@@ -143,6 +151,7 @@ class TradeRepublicV1(Transformer):
                 required = REQUIRED_BY_ENTRY_TYPE.get(row.entry_type, ())
                 self.require(row, d, required, f"required for {row.source_type}")
 
+        self._check_booking_date(row)
         self._check_signs(row)
         self._check_trade_arithmetic(row)
         self._check_fx(row)
@@ -151,6 +160,22 @@ class TradeRepublicV1(Transformer):
         return row
 
     # --- checks -------------------------------------------------------------------
+
+    @staticmethod
+    def _check_booking_date(row: ParsedRow) -> None:
+        if row.booked_at is None or row.booking_date is None:
+            return
+        local_date = row.booked_at.astimezone(BERLIN).date()
+        lag = local_date - row.booking_date
+        if timedelta(0) <= lag <= MAX_BOOKING_LAG:
+            return
+        when = "after" if lag < timedelta(0) else f"{lag.days} days before"
+        row.flag(
+            "booking_date_mismatch",
+            "warning",
+            f"date {row.booking_date} is {when} the Berlin date of datetime ({local_date})",
+            "date",
+        )
 
     @staticmethod
     def _check_signs(row: ParsedRow) -> None:

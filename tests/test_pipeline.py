@@ -47,7 +47,7 @@ def test_happy_path_reaches_the_ledger_with_ground_truth_holdings(conn, tr_accou
     report = BatchStore(conn).report(batch_id)
     assert report.status == "staged"
     assert (report.schema_id, report.schema_version, report.parser_version) == (
-        "trade_republic.transactions_csv", 1, "2",
+        "trade_republic.transactions_csv", 1, "3",
     )  # fmt: skip
     assert report.row_count == len(synthetic.rows)
     assert report.errors == 0

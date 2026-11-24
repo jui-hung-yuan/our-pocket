@@ -331,3 +331,11 @@ only in the database. Manual corrections and LLM categories (V2) will be kept ou
 file keyed by external id, a cache keyed by input), so a rebuild keeps them; if that turns out
 not to be possible, re-parse gets built then.
 
+### D-028: Trade Republic booking date may be a few days before its timestamp
+*2026-11-24*
+
+**Chose:** warn when `date` is after the Berlin date of `datetime`, or more than 4 days
+before it (parser 3). **Over:** requiring them to be equal, as the generator assumed.
+**Why:** real exports book some rows, tax refunds most often, 1–2 days before their timestamp,
+so an equality check would flag good rows. The window still catches a date moved by a week,
+which was a blind spot. The generator now books tax refunds a day early, as real exports do.
