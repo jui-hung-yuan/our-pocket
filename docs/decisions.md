@@ -321,3 +321,13 @@ last digit typed. Exit code 1 on any difference. Snapshots live with the exports
 **Why:** the app's own numbers are the only ground truth that doesn't come from my reading of
 the format. Typing a few numbers is cheaper than a PDF parser that would need its own checks.
 
+### D-027: A parser fix means reset and import again; no re-parse command yet
+*2026-11-24*
+
+**Chose:** after a parser fix, `make reset-db` and import the files in `data/raw/` again.
+**Over:** a command re-parsing stored batches from `raw.raw_row` (D-012's promise).
+**Why:** at this scale a rebuild is fast and loses nothing. That changes once something lives
+only in the database. Manual corrections and LLM categories (V2) will be kept outside it (a
+file keyed by external id, a cache keyed by input), so a rebuild keeps them; if that turns out
+not to be possible, re-parse gets built then.
+
