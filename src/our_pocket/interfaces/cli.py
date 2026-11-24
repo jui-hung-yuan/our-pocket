@@ -7,6 +7,7 @@ our-pocket import data/synthetic/n26/main_seed42.csv --account "N26 Main"   # on
 our-pocket batch show 1
 our-pocket batch commit 1 --accept-warnings
 our-pocket ledger --account "TR Depot"
+our-pocket reconcile data/raw/trade_republic/app_2026-11-24.json   # ledger vs the app
 our-pocket synth fixtures          # regenerate everything under data/synthetic/
 """
 
@@ -23,7 +24,14 @@ from our_pocket.db.schema import DEFAULT_HOUSEHOLD
 from our_pocket.etl.extract import ExtractionError
 from our_pocket.etl.load import BatchError, BatchReport, BatchStore
 from our_pocket.etl.pipeline import ImportPipeline
-from our_pocket.services import AccountNotFound, AccountService, LedgerService
+from our_pocket.services import (
+    AccountNotFound,
+    AccountService,
+    AppSnapshot,
+    LedgerService,
+    Reconciliation,
+    ReconciliationService,
+)
 from our_pocket.synthetic import FIXTURES, write_fixtures
 from our_pocket.synthetic import trade_republic as synth_tr
 
@@ -118,6 +126,48 @@ def cmd_ledger(args: argparse.Namespace) -> None:
         print(f"  {isin}  {qty.normalize():f}")
 
 
+def _number(value: Decimal | None) -> str:
+    return "—" if value is None else f"{value.normalize():,f}"
+
+
+def _print_reconciliation(result: Reconciliation) -> None:
+    snapshot, cash = result.snapshot, result.cash
+    print(f"{snapshot.account!r}: ledger entries booked up to {snapshot.as_of} vs the app")
+    if result.positions:
+        print(f"\n{'position':<14}{'ledger':>16}{'app':>16}{'difference':>16}")
+        for p in result.positions:
+            verdict = "ok" if p.matches else "MISMATCH"
+            print(
+                f"{p.isin:<14}{_number(p.ledger):>16}{_number(p.app):>16}"
+                f"{_number(p.difference):>16}  {verdict}"
+            )
+    print(f"\n{'cash':<14}{'ledger':>16}{'app':>16}{'difference':>16}")
+    verdict = "ok" if cash.matches else "MISMATCH"
+    print(
+        f"{'':<14}{cash.ledger.known:>16,.2f}{cash.app:>16,.2f}{cash.difference:>16,.2f}  {verdict}"
+    )
+    if cash.ledger.unverified_entries:
+        count = cash.ledger.unverified_entries
+        print(
+            f"  left out: {count} {'entry' if count == 1 else 'entries'} with unverified cash "
+            f"meaning, amount {cash.ledger.unverified_amount:,.2f}"
+        )
+        if cash.matches_if_unverified_is_cash:
+            print("  counting their amount as cash closes the gap: they move cash")
+        elif cash.matches:
+            print("  the cash matches without them: they move no cash")
+    print("\nresult: " + ("matches" if result.matches else "differs"))
+
+
+def cmd_reconcile(args: argparse.Namespace) -> None:
+    snapshot = AppSnapshot.from_json(Path(args.snapshot).read_text())
+    with get_engine().connect() as conn:
+        result = ReconciliationService(conn).reconcile(snapshot)
+    _print_reconciliation(result)
+    if not result.matches:
+        sys.exit(1)
+
+
 def cmd_synth_fixtures(args: argparse.Namespace) -> None:
     for path in write_fixtures(Path(args.root)):
         print(f"wrote {path}")
@@ -174,6 +224,10 @@ def build_parser() -> argparse.ArgumentParser:
     led = sub.add_parser("ledger", help="summarise committed entries")
     led.add_argument("--account")
     led.set_defaults(func=cmd_ledger)
+
+    rec = sub.add_parser("reconcile", help="compare the ledger with numbers from the app")
+    rec.add_argument("snapshot", help="JSON: account, as_of, cash, optional positions")
+    rec.set_defaults(func=cmd_reconcile)
 
     synth = sub.add_parser("synth", help="generate synthetic exports").add_subparsers(required=True)
     fixtures = synth.add_parser(

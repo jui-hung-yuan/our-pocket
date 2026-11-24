@@ -25,7 +25,7 @@ P3 (categorisation), P4 (subscription detection) and P5 (household Q&A agent) co
 1. Trade Republic transaction CSV → ledger ✅
 2. N26 CSV → ledger, one account per space ✅
 3. Flag moves between N26 spaces (P2); legs aren't paired ([D-021](docs/decisions.md#d-021-flag-moves-between-n26-spaces-dont-pair-transfer-legs)) ✅
-4. Eval suites on synthetic data ✅; real-data reconciliation (§6)
+4. Eval suites on synthetic data ✅; real-data reconciliation ✅, first run on own exports matched (§6)
 5. One chart: cash + positions over time (at cost or at reported valuations; daily prices are V2)
 6. A review step for flagged batches (CLI now; maybe one Streamlit page)
 7. README with the eval results and the 60-second pitch
@@ -138,7 +138,16 @@ field correctly, and does it flag *every* row it can't trust? The guide's 20–5
 | **Real-data reconciliation** (private) | Own exports | The cash balance and position list shown in the app, typed into a snapshot file | Position diff per ISIN; cash diff | 0 (results stay local) |
 
 The synthetic suites are pytest files named `tests/test_eval_*.py`, so they run in `make check`
-([D-025](docs/decisions.md#d-025-eval-suites-are-tests-not-a-separate-harness)).
+([D-025](docs/decisions.md#d-025-eval-suites-are-tests-not-a-separate-harness)). Reconciliation:
+
+```bash
+# data/raw/trade_republic/app_<date>.json, typed from the app on the day of the export:
+# {"account": "TR", "as_of": "2026-11-24", "cash": "1234.56", "positions": {"<ISIN>": "12.3456"}}
+uv run our-pocket reconcile data/raw/trade_republic/app_<date>.json
+```
+
+It counts entries booked up to `as_of`, and says whether counting `STOCKPERK` amounts as cash
+would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconcile-against-a-hand-typed-app-snapshot)).
 
 - Synthetic generator rules: invented ISINs and IBANs with valid check digits, the real export's quoting
   and number formats, mixed timestamp precisions, late trades booked on the next local day.

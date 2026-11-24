@@ -6,10 +6,18 @@ so no interface ever builds SQL itself.
 
 from our_pocket.services.accounts import AccountNotFound, AccountService
 from our_pocket.services.ledger import CashBalance, LedgerService
+from our_pocket.services.reconciliation import (
+    AppSnapshot,
+    Reconciliation,
+    ReconciliationService,
+)
 
 __all__ = [
     "AccountNotFound",
     "AccountService",
+    "AppSnapshot",
     "CashBalance",
     "LedgerService",
+    "Reconciliation",
+    "ReconciliationService",
 ]

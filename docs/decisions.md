@@ -309,3 +309,15 @@ spots, asserted to pass unflagged, each naming what catches it instead (mostly r
 assertion is the report. A harness earns its place in V2, where an LLM's accuracy is a rate
 to track, not a pass/fail.
 
+### D-026: Reconcile against a hand-typed app snapshot
+*2026-11-24*
+
+**Chose:** `our-pocket reconcile SNAPSHOT.json` compares the ledger up to `as_of` with cash
+and positions typed from the app. A value matches when it differs by less than one unit of the
+last digit typed. Exit code 1 on any difference. Snapshots live with the exports in `data/raw/`.
+
+**Over:** exact equality (apps round or cut off share counts), and parsing a position statement.
+
+**Why:** the app's own numbers are the only ground truth that doesn't come from my reading of
+the format. Typing a few numbers is cheaper than a PDF parser that would need its own checks.
+

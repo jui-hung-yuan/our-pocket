@@ -16,6 +16,7 @@ flowchart TB
     subgraph services["services/  (the application API)"]
         ACC["AccountService"]
         LED["LedgerService<br/>read-only"]
+        REC["ReconciliationService<br/>ledger vs app snapshot"]
     end
 
     subgraph etl["etl/  (getting data in)"]
@@ -38,6 +39,8 @@ flowchart TB
 
     CLI --> ACC
     CLI --> LED
+    CLI --> REC
+    REC --> LED
     CLI --> PIPE
     CLI --> LD
     TOOLS -.-> LED

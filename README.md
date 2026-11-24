@@ -4,7 +4,8 @@ A household ledger built from German bank and broker CSV exports. No number reac
 unvalidated, and every number traces back to its file and line.
 
 Status: V1 in progress. Trade Republic and N26 CSV → ledger work end to end, with moves between
-N26 spaces flagged; the eval harness is next.
+N26 spaces flagged, the synthetic eval suites in `make check`, and reconciliation against the
+apps' own numbers ([PROJECT_PLAN §6](PROJECT_PLAN.md#6-evaluation-plan)); the chart is next.
 Plan: [PROJECT_PLAN.md](PROJECT_PLAN.md) · decisions: [docs/decisions.md](docs/decisions.md).
 
 ## How an import works
