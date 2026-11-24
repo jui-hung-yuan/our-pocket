@@ -250,7 +250,7 @@ def main(argv: list[str] | None = None) -> None:
     except IntegrityError as exc:
         print(f"error: {exc.orig}", file=sys.stderr)
         sys.exit(1)
-    except (BatchError, AccountNotFound, ExtractionError, ValueError) as exc:
+    except (BatchError, AccountNotFound, ExtractionError, ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         sys.exit(1)
 

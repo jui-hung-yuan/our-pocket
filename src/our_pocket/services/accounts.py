@@ -40,10 +40,17 @@ class AccountService:
                 f"unsupported institution {institution!r}; "
                 f"known: {', '.join(self.supported_institutions())}"
             )
+        if owner is not None:
+            owner = owner.strip()
+            if not owner:
+                # An empty name must not fall through to a joint account (D-024).
+                raise ValueError("owner is empty; name the person, or use --joint")
         export_account_name = self._check_export_name(institution, export_account_name)
         household_id = self._get_or_create(household, name=household_name)
         owner_id = (
-            self._get_or_create(person, household_id=household_id, name=owner) if owner else None
+            None
+            if owner is None
+            else self._get_or_create(person, household_id=household_id, name=owner)
         )
         account_id = self.conn.execute(
             insert(account)
