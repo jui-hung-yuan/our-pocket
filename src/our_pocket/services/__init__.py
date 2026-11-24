@@ -5,6 +5,11 @@ so no interface ever builds SQL itself.
 """
 
 from our_pocket.services.accounts import AccountNotFound, AccountService
-from our_pocket.services.ledger import LedgerService
+from our_pocket.services.ledger import CashBalance, LedgerService
 
-__all__ = ["AccountNotFound", "AccountService", "LedgerService"]
+__all__ = [
+    "AccountNotFound",
+    "AccountService",
+    "CashBalance",
+    "LedgerService",
+]

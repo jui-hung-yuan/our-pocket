@@ -25,7 +25,7 @@ P3 (categorisation), P4 (subscription detection) and P5 (household Q&A agent) co
 1. Trade Republic transaction CSV → ledger ✅
 2. N26 CSV → ledger, one account per space ✅
 3. Flag moves between N26 spaces (P2); legs aren't paired ([D-021](docs/decisions.md#d-021-flag-moves-between-n26-spaces-dont-pair-transfer-legs)) ✅
-4. Eval harness: synthetic ground truth, perturbation suite, real-data reconciliation (§6)
+4. Eval suites on synthetic data ✅; real-data reconciliation (§6)
 5. One chart: cash + positions over time (at cost or at reported valuations; daily prices are V2)
 6. A review step for flagged batches (CLI now; maybe one Streamlit page)
 7. README with the eval results and the 60-second pitch
@@ -128,12 +128,17 @@ field correctly, and does it flag *every* row it can't trust? The guide's 20–5
 
 | Suite | Cases | Ground truth | Metric | Target |
 |---|---|---|---|---|
-| **Field accuracy** | Synthetic exports, several seeds × 14 months, all 12 Trade Republic types | Generator's own bookkeeping (holdings, rows), not the parser's output | Field-level accuracy; positions = generator holdings | 100% |
-| **Perturbation (row level)** | ~30 planted defects: wrong sign, broken arithmetic, bad ISIN, decimal comma, missing FX field, unknown type, duplicate id, … | Each defect's expected flag | **Unflagged-error rate**; false-flag rate on clean rows | 0 unflagged; 0 false errors |
-| **Schema drift (file level)** | Renamed, added, dropped and reordered columns; `;` delimiter; BOM; cp1252 | Expected: refused at intake, explanation names the change | Detection rate; explanation correct | 100% |
-| **Idempotency** | Re-import, overlapping exports, out-of-order imports | Ledger row count | Ledger unchanged on re-import | exact |
-| **Space transfers (P2)** | Moves between N26 spaces, incl. one-legged moves from a member's space that isn't imported; external transfers and MoneyBeam | Generator's space names | Rows typed `space_transfer_*` vs planted | exact |
-| **Real-data reconciliation** (private) | Own exports | Trade Republic's position list and cash balance shown in the app | Position diff per ISIN; cash diff | 0 (results stay local) |
+| **Field accuracy** | Synthetic exports, 5 seeds × 14 months, both institutions; together every Trade Republic type the generator writes | Generator's own bookkeeping (holdings, cash, balances per space), not the parser's output | Field-level accuracy; positions and cash = generator's | 100% |
+| **Perturbation (row level)** | ~50 planted defects: wrong sign, broken arithmetic, bad ISIN/IBAN, decimal comma, missing FX field, unknown type, duplicate id, … Every row flag the parsers can raise has one (tested) | Each defect's expected flag | **Unflagged errors**; false flags on the other rows of the file | 0 unflagged; 0 false flags |
+| **Blind spots** | Defects no row check can see (a deposit amount changed; shares and amount scaled together) | Asserted to pass unflagged, each naming what catches it instead | — | listed, not hidden |
+| **Schema drift (file level)** | Renamed, added, dropped and reordered columns; `;` and tab delimiters | Refused at intake, explanation names the change | Detection rate; explanation correct | 100% |
+| **Not drift** | BOM, header case and spaces, CRLF, other quoting, cp1252 | Read exactly like the clean file | Parsed rows equal | 100% |
+| **Idempotency** | Re-import, overlapping exports, out-of-order imports, the same rows re-saved as other bytes | Ledger row count, positions, cash | Ledger unchanged on re-import | exact |
+| **Space transfers (P2)** | Moves between N26 spaces, incl. one-legged moves from a member's space that isn't imported; external transfers and MoneyBeam | The moves the generator made | Rows typed `space_transfer_*` vs planted | exact |
+| **Real-data reconciliation** (private) | Own exports | The cash balance and position list shown in the app, typed into a snapshot file | Position diff per ISIN; cash diff | 0 (results stay local) |
+
+The synthetic suites are pytest files named `tests/test_eval_*.py`, so they run in `make check`
+([D-025](docs/decisions.md#d-025-eval-suites-are-tests-not-a-separate-harness)).
 
 - Synthetic generator rules: invented ISINs and IBANs with valid check digits, the real export's quoting
   and number formats, mixed timestamp precisions, late trades booked on the next local day.

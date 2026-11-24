@@ -294,3 +294,18 @@ are told apart only by their order in the file.
 
 **Chose:** the CLI requires exactly one of them. **Over:** a missing `--owner` meaning joint.
 **Why:** a forgotten flag silently made a personal account joint, visible to the whole household.
+
+### D-025: Eval suites are tests, not a separate harness
+*2026-11-24*
+
+**Chose:** the §6 suites as pytest files (`tests/test_eval_*.py`) in `make check`. Each one
+asserts its target directly: a planted defect must be flagged on its row and nowhere else, a
+drifted header refused with the change named. Defects no row check can see are listed as blind
+spots, asserted to pass unflagged, each naming what catches it instead (mostly reconciliation).
+
+**Over:** a harness with its own runner and a score report.
+
+**Why:** V1 has no model, so every target is exact (0 unflagged, 100% detected) and a failed
+assertion is the report. A harness earns its place in V2, where an LLM's accuracy is a rate
+to track, not a pass/fail.
+

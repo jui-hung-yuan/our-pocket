@@ -111,6 +111,40 @@ def test_overlapping_export_only_adds_new_rows(conn, tr_account, synthetic):
     assert LedgerService(conn).positions() == synthetic.holdings
 
 
+def test_out_of_order_imports_end_with_the_same_ledger(conn, tr_account, synthetic):
+    half = len(synthetic.rows) // 2
+    later = SyntheticExport(rows=synthetic.rows[half:], holdings={})
+    earlier = SyntheticExport(rows=synthetic.rows[:half], holdings={})
+    for name, export in (("later.csv", later), ("earlier.csv", earlier), ("full.csv", synthetic)):
+        BatchStore(conn).commit(_stage(conn, export, tr_account, name), accept_warnings=True)
+    assert _count(conn, ledger_entry) == len(synthetic.rows)
+    assert LedgerService(conn).positions() == synthetic.holdings
+    assert LedgerService(conn).cash_balance().known == synthetic.cash
+
+
+def test_overlapping_exports_staged_before_either_commit(conn, tr_account, synthetic):
+    """Neither batch sees the other's rows in the ledger at staging; the unique constraint
+    keeps the second commit from adding them twice (D-008)."""
+    first = SyntheticExport(rows=synthetic.rows[:40], holdings={})
+    early = _stage(conn, first, tr_account, "jan.csv")
+    full = _stage(conn, synthetic, tr_account, "full.csv")
+    BatchStore(conn).commit(full, accept_warnings=True)
+    result = BatchStore(conn).commit(early, accept_warnings=True)
+    assert result.inserted == 0
+    assert _count(conn, ledger_entry) == len(synthetic.rows)
+    assert LedgerService(conn).positions() == synthetic.holdings
+
+
+def test_resaved_file_adds_nothing(conn, tr_account, synthetic):
+    """Other bytes, same rows (re-saved with Windows line endings): the file hash differs,
+    so only transaction ids stop the rows counting twice."""
+    BatchStore(conn).commit(_stage(conn, synthetic, tr_account), accept_warnings=True)
+    resaved = synthetic.to_csv_bytes().replace(b"\n", b"\r\n")
+    batch_id = ImportPipeline(conn).run(resaved, "tr (1).csv", tr_account)
+    result = BatchStore(conn).commit(batch_id, accept_warnings=True)
+    assert (result.inserted, result.skipped_duplicates) == (0, len(synthetic.rows))
+
+
 def test_errors_block_commit_until_rejected_and_reimported(conn, tr_account, synthetic):
     rows = [dict(r) for r in synthetic.rows]
     rows[5]["amount"] = "not-a-number"

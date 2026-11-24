@@ -4,10 +4,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from our_pocket.etl.extract import CsvExtractor
 from our_pocket.etl.models import RawRow
 from our_pocket.etl.transform.n26 import N26V1
-from our_pocket.synthetic import n26 as synth_n26
 
 PARSER = N26V1()
 NO_FX = {"original amount": "", "original currency": "", "exchange rate": ""}
@@ -167,49 +165,3 @@ def test_external_id_changes_with_any_value():
 def test_zero_amount_has_no_sign_flag():
     row = _parse(_row(**{"amount (eur)": "0", "original amount": "0"}))
     assert ("warning", "unexpected_sign") not in _codes(row)
-
-
-@pytest.mark.parametrize(
-    ("overrides", "expected"),
-    [
-        ({"type": "Chargeback"}, ("error", "unknown_type")),
-        ({"amount (eur)": "5", "original amount": "5"}, ("warning", "unexpected_sign")),
-        ({"booking date": ""}, ("error", "missing_field")),
-        ({"type": ""}, ("error", "missing_field")),
-        ({"amount (eur)": ""}, ("error", "missing_field")),
-        ({"account name": ""}, ("error", "missing_field")),
-        ({"booking date": "04.03.2025"}, ("error", "unparseable_value")),
-        ({"amount (eur)": "1,5"}, ("error", "unparseable_value")),
-        ({"exchange rate": ""}, ("error", "fx_incomplete")),
-        ({"original amount": "200"}, ("error", "fx_mismatch")),
-        ({"partner iban": "DE00370400440532013000"}, ("warning", "invalid_iban")),
-    ],
-)
-def test_planted_defects_are_flagged(overrides, expected):
-    assert expected in _codes(_parse(_row(**overrides)))
-
-
-@pytest.mark.parametrize("space", synth_n26.SPACES)
-def test_synthetic_n26_has_no_flags(synthetic_n26, space):
-    raw_file = CsvExtractor().extract(synthetic_n26.to_csv_bytes(space), f"{space}.csv")
-    assert [f for p in PARSER.transform(raw_file.rows) for f in p.flags] == []
-
-
-def test_synthetic_n26_cash_effect_sums_to_the_balance(synthetic_n26):
-    for space, balance in synthetic_n26.balances().items():
-        raw_file = CsvExtractor().extract(synthetic_n26.to_csv_bytes(space), f"{space}.csv")
-        assert sum(p.cash_effect for p in PARSER.transform(raw_file.rows)) == balance
-
-
-def test_synthetic_n26_transfers_between_spaces_are_space_transfers(synthetic_n26):
-    rows = {}
-    for space in synth_n26.SPACES:
-        raw_file = CsvExtractor().extract(synthetic_n26.to_csv_bytes(space), f"{space}.csv")
-        rows |= {(space, p.line_number): p for p in PARSER.transform(raw_file.rows)}
-    partners = set(synth_n26.SPACES) | {synth_n26.OTHER_MEMBER_MAIN}
-    for row in rows.values():
-        is_space_transfer = row.entry_type in ("space_transfer_in", "space_transfer_out")
-        assert is_space_transfer == (
-            row.source_type in ("Credit Transfer", "Debit Transfer")
-            and row.counterparty_name in partners
-        )
