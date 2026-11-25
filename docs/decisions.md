@@ -38,7 +38,7 @@ risk for nothing. The README will say so: knowing when *not* to use GenAI is the
 
 The pipeline moves sets of rows between layers (`INSERT … SELECT … ON CONFLICT`), which Core
 expresses directly. No identity map or lazy-loading to reason about. Alembic gives versioned
-migrations; `tests/test_migrations.py` fails if `db/schema.py` and the migrations disagree.
+migrations; `make migrations` fails if `db/schema.py` and the migrations disagree.
 
 ### D-005: Identify file formats by header fingerprint; refuse unknown ones
 *2026-11-19*
@@ -138,7 +138,7 @@ extractor class per institution.
 stage makes the data flow visible and lets agent tools (V3) depend on `services/` only, never on the
 import machinery. Extractors are per format because Trade Republic and N26 are both CSV: what
 differs is the meaning of columns, which is transformation. The layer rules are enforced by
-`tests/test_architecture.py`.
+`tests/repo/test_architecture.py`.
 
 ### D-015: One `make check`; real-data guard by content, not just by path
 *2026-11-20*
@@ -183,7 +183,7 @@ shape, which is the circularity caveat in the eval plan in action.
 
 **Chose:** `raw` (`raw_row`), `staging` (`import_batch`, `staged_row`, `import_flag`) and `core`
 (`household`, `person`, `account`, `ledger_entry`), moved out of `public` by migration 0002. A
-trigger refuses UPDATE, DELETE and TRUNCATE on `raw.raw_row` (tested in `tests/test_raw_layer.py`).
+trigger refuses UPDATE, DELETE and TRUNCATE on `raw.raw_row` (tested in `tests/db/test_raw_layer.py`).
 `alembic_version` stays in `public`.
 
 **Over:** everything in `public`, with L1 immutability resting on convention in `BatchStore`.
@@ -298,7 +298,7 @@ are told apart only by their order in the file.
 ### D-025: Eval suites are tests, not a separate harness
 *2026-11-24*
 
-**Chose:** the §6 suites as pytest files (`tests/test_eval_*.py`) in `make check`. Each one
+**Chose:** the §6 suites as pytest files (`tests/eval/`) in `make check`. Each one
 asserts its target directly: a planted defect must be flagged on its row and nowhere else, a
 drifted header refused with the change named. Defects no row check can see are listed as blind
 spots, asserted to pass unflagged, each naming what catches it instead (mostly reconciliation).
@@ -339,3 +339,16 @@ before it (parser 3). **Over:** requiring them to be equal, as the generator ass
 **Why:** real exports book some rows, tax refunds most often, 1–2 days before their timestamp,
 so an equality check would flag good rows. The window still catches a date moved by a week,
 which was a blind spot. The generator now books tax refunds a day early, as real exports do.
+
+### D-029: Tests mirror `src/`; the eval suites and repo checks sit apart
+*2026-11-25*
+
+**Chose:** tests of code in `src/our_pocket/<path>/` live in `tests/<path>/`, named after the
+module they test where there is one (`etl/transform/test_n26.py`).
+`tests/eval/` holds the suites that ask one question of every parser (D-025), and `tests/repo/`
+the rules about the codebase (layers, real-data guard). pytest runs with `--import-mode=importlib`,
+so two folders can each have a `test_n26.py`.
+**Over:** one flat folder, or folders split by whether a test needs the database (the `db`
+marker does that).
+**Why:** a failing test points at the module to open, and a new module's tests have one obvious place.
+

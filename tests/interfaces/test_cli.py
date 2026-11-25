@@ -18,7 +18,7 @@ from our_pocket.interfaces import cli
 from our_pocket.synthetic import n26 as synth_n26
 from our_pocket.synthetic import trade_republic as synth_tr
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 TRADE_REPUBLIC_FIXTURE = ROOT / "data/synthetic/trade_republic/transactions_seed42.csv"
 N26_FIXTURE = ROOT / "data/synthetic/n26/main_seed42.csv"
 

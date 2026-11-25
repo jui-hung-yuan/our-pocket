@@ -8,7 +8,7 @@ import pytest
 from our_pocket.etl.transform.trade_republic import COLUMNS_V1
 from our_pocket.synthetic import FIXTURES
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 _spec = importlib.util.spec_from_file_location("guard", ROOT / "scripts/guard_real_data.py")
 assert _spec and _spec.loader
 guard = importlib.util.module_from_spec(_spec)

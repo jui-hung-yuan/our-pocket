@@ -14,7 +14,7 @@ from our_pocket.synthetic import FIXTURES
 from our_pocket.synthetic import n26 as synth_n26
 from our_pocket.synthetic import trade_republic as synth_tr
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_generator_is_deterministic():

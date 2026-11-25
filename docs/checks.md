@@ -19,7 +19,7 @@ Fast checks come first, so failures show up quickly.
 | `lint` | `ruff check` + `ruff format --check` | Lint errors or unformatted code | no |
 | `typecheck` | `mypy` (strict, on `src/` and `migrations/`) | Any type error | no |
 | `guard` | `scripts/guard_real_data.py --all` | Any file git would commit looks like a real export (see below) | no |
-| `boundaries` | `pytest -m boundaries` (`tests/test_architecture.py`) | A layer imports a layer above it, or `etl/extract` / `etl/transform` touch the database (rules in [architecture.md](architecture.md)) | no |
+| `boundaries` | `pytest -m boundaries` (`tests/repo/test_architecture.py`) | A layer imports a layer above it, or `etl/extract` / `etl/transform` touch the database (rules in [architecture.md](architecture.md)) | no |
 | `migrations` | `alembic upgrade head` → `alembic check` → `downgrade base` → `upgrade head` | Migrations don't apply, `db/schema.py` changed without a new migration, or a downgrade is broken | yes |
 | `test` | `pytest -m "not boundaries"` | Any test fails | yes, for `db`-marked tests |
 
@@ -56,7 +56,7 @@ The last rule works because every committed synthetic file is listed in
 synthetic data: add the entry there, then run `make synthetic`.
 
 These are **defence in depth** next to `.gitignore` (which ignores `data/` except
-`data/synthetic/`), not a replacement for it. The rules are tested in `tests/test_guard.py`,
+`data/synthetic/`), not a replacement for it. The rules are tested in `tests/repo/test_guard.py`,
 including a test that the repository is clean.
 
 **If the guard blocks a commit:** move the file to `data/raw/` (ignored), or regenerate synthetic

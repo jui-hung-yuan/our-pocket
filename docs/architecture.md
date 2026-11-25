@@ -50,7 +50,7 @@ flowchart TB
     SCHEMA --- PG
 ```
 
-Dependencies point **down only**. `tests/test_architecture.py` enforces it:
+Dependencies point **down only**. `tests/repo/test_architecture.py` enforces it:
 
 | Package | May import | Must not import |
 |---|---|---|
@@ -270,7 +270,9 @@ Each layer has its own Postgres schema (D-017).
    `account_column` if rows name their account, so imports check it.
 2. Register it in `etl/registry.py:default_registry()`.
 3. `synthetic/comdirect.py`: a seeded generator, with its files in `synthetic.FIXTURES`.
-4. Tests: the transformer on synthetic rows plus perturbations; one end-to-end pipeline test.
+4. Tests: `tests/etl/transform/test_comdirect.py` for its own rules. Add it to each suite in
+   `tests/eval/`: ground truth, a planted defect per flag it can raise (a test fails otherwise),
+   and its export in the drift cases.
 
 New entry types need a migration that replaces the `ck_ledger_entry_entry_type` CHECK.
 

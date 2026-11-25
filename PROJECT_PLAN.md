@@ -61,7 +61,7 @@ L3  ledger_entry    unique (account_id, external_id); links to staged_row → ra
   change to `raw.raw_row` (D-017).
 - **L2 is disposable.** It is the parser's opinion, stamped with schema and parser version.
 - **L3 is the only layer reports read.** It never holds a row that hasn't passed review, and every
-  entry can be traced back to its file and line (tested in `tests/test_pipeline.py`).
+  entry can be traced back to its file and line (tested in `tests/etl/test_pipeline.py`).
 
 ## 4. Schema versioning
 
@@ -137,7 +137,7 @@ field correctly, and does it flag *every* row it can't trust? The guide's 20–5
 | **Space transfers (P2)** | Moves between N26 spaces, incl. one-legged moves from a member's space that isn't imported; external transfers and MoneyBeam | The moves the generator made | Rows typed `space_transfer_*` vs planted | exact |
 | **Real-data reconciliation** (private) | Own exports | The cash balance and position list shown in the app, typed into a snapshot file | Position diff per ISIN; cash diff | 0 (results stay local) |
 
-The synthetic suites are pytest files named `tests/test_eval_*.py`, so they run in `make check`
+The synthetic suites are pytest files in `tests/eval/`, so they run in `make check`
 ([D-025](docs/decisions.md#d-025-eval-suites-are-tests-not-a-separate-harness)). Reconciliation:
 
 ```bash

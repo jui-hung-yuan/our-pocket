@@ -11,7 +11,7 @@ import pytest
 
 pytestmark = pytest.mark.boundaries
 
-SRC = Path(__file__).resolve().parents[1] / "src" / "our_pocket"
+SRC = Path(__file__).resolve().parents[2] / "src" / "our_pocket"
 
 # package → our_pocket packages (and third-party modules) it must not import
 FORBIDDEN = {

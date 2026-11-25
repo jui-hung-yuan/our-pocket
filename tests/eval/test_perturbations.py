@@ -29,7 +29,7 @@ from our_pocket.synthetic import trade_republic as synth_tr
 Rows = list[dict[str, str]]
 Mutation = dict[str, str] | Callable[[Rows, int], None]
 
-TRANSFORM_SOURCES = Path(__file__).resolve().parents[1] / "src/our_pocket/etl/transform"
+TRANSFORM_SOURCES = Path(__file__).resolve().parents[2] / "src/our_pocket/etl/transform"
 REGISTRY = default_registry()
 CLEAN_TRADE_REPUBLIC = synth_tr.generate(seed=42)
 CLEAN_N26 = synth_n26.generate(seed=42)

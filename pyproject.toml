@@ -41,7 +41,8 @@ ignore = ["N818"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+# importlib: test files in different folders may share a name (tests/ mirrors src/).
+addopts = "-ra --strict-markers --import-mode=importlib"
 markers = [
     "db: needs a running Postgres (DATABASE_URL); skipped when unreachable",
     "boundaries: layer/import rules (make boundaries)",
