@@ -26,8 +26,8 @@ P3 (categorisation), P4 (subscription detection) and P5 (household Q&A agent) co
 2. N26 CSV → ledger, one account per space ✅
 3. Flag moves between N26 spaces (P2); legs aren't paired ([D-021](docs/decisions.md#d-021-flag-moves-between-n26-spaces-dont-pair-transfer-legs)) ✅
 4. Eval suites on synthetic data ✅; real-data reconciliation ✅, first run on own exports matched (§6)
-5. One chart: cash + positions over time (at cost or at reported valuations; daily prices are V2)
-6. A review step for flagged batches (CLI now; maybe one Streamlit page)
+5. One chart: cash + positions over time, positions at cost ([D-031](docs/decisions.md#d-031-positions-in-the-chart-are-valued-at-cost-by-average-cost); daily prices are V2) ✅
+6. A review step for flagged batches: CLI, and the Review page ✅ (both in one local Streamlit app, `make app`, [D-032](docs/decisions.md#d-032-one-local-streamlit-app-for-balances-and-review-no-stored-aggregates-fastapi-later))
 7. README with the eval results and the 60-second pitch
 
 **Won't do in V1**
@@ -164,7 +164,7 @@ would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconc
 |---|---|---|
 | **V1: Trustworthy ledger** | §2 | Cash + positions chart from real data, reconciled to the broker |
 | **V2: Categorise and value** | Categorisation (classical baseline vs LLM on low-confidence rows, cost per 1,000 rows); daily prices; comdirect CSV; PDF/LLM extraction reconsidered with the CSV parser as ground truth | Benchmark table: when GenAI beats rules |
-| **V3: Household + agent** | Row-level security; read-only MCP/SQL tools; Q&A eval; subscriptions | "What did we spend on subscriptions in Q3?" |
+| **V3: Household + agent** | Row-level security; read-only MCP/SQL tools; a FastAPI service over the services once a second client (the agent) needs them ([D-032](docs/decisions.md#d-032-one-local-streamlit-app-for-balances-and-review-no-stored-aggregates-fastapi-later)); Q&A eval; subscriptions | "What did we spend on subscriptions in Q3?" |
 
 **V3 prerequisites and shape:**
 

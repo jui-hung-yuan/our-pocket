@@ -364,3 +364,27 @@ a `Presentment`, with no other row from that partner. Whether N26 counted it in 
 can't be read from the file. Reconciling the account against the app's balance settles it:
 `reconcile` reports whether counting it closes a gap (Q1).
 
+### D-031: Positions in the chart are valued at cost, by average cost
+*2026-11-25*
+
+**Chose:** what the shares still held cost: a buy adds the cash it took, fees included; a sale
+removes the average cost of the shares sold, per account and ISIN. A sale larger than the
+holding stops the chart (`MissingBuys`) instead of guessing.
+**Over:** the last trade price seen in the export, and FIFO.
+**Why:** cost is exact and checkable against the export; a last trade price can be months old
+for a stock bought once. FIFO is what German tax uses, but it only changes which cost a sale
+removes, not the picture, and the tax view isn't V1. Market value needs daily prices (V2).
+
+### D-032: One local Streamlit app for balances and review; no stored aggregates, FastAPI later
+*2026-11-25*
+
+**Chose:** `make app`, a Streamlit app with two pages that call the services directly: Balances
+(total, cash and positions at cost over time for all accounts, one institution or one account,
+and the accounts side by side) and Review (a staged batch's flags, then commit or reject under
+the CLI's rules). It serves on localhost only. History is computed from the ledger on each
+request and cached by Streamlit until the next commit (`last_entry_id` is the cache key).
+**Over:** a static HTML chart from the CLI (no way to switch views); FastAPI (an API, still
+needing a frontend: it earns its place when another program reads the data, like the V3 agent);
+a stored layer of daily balances (it would go stale after every import and repeat the logic).
+**Why:** one app covers V1 items 5 and 6. Computing history takes milliseconds at this size;
+revisit stored aggregates when it doesn't, or when a tool other than this code reads the database.

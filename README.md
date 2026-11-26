@@ -3,9 +3,10 @@
 A household ledger built from German bank and broker CSV exports. No number reaches the ledger
 unvalidated, and every number traces back to its file and line.
 
-Status: V1 in progress. Trade Republic and N26 CSV → ledger work end to end, with moves between
-N26 spaces flagged, the synthetic eval suites in `make check`, and reconciliation against the
-apps' own numbers ([PROJECT_PLAN §6](PROJECT_PLAN.md#6-evaluation-plan)); the chart is next.
+Status: V1 in progress. Trade Republic and N26 CSV → ledger work end to end: moves between N26
+spaces flagged, synthetic eval suites in `make check`, reconciliation against the apps' own
+numbers ([PROJECT_PLAN §6](PROJECT_PLAN.md#6-evaluation-plan)), and a local app for balances over
+time and reviewing imports.
 Plan: [PROJECT_PLAN.md](PROJECT_PLAN.md) · decisions: [docs/decisions.md](docs/decisions.md).
 
 ## How an import works
@@ -35,6 +36,7 @@ make demo        # account "TR Demo" + synthetic Trade Republic import
 uv run our-pocket batch show 1
 uv run our-pocket batch commit 1 --accept-warnings
 uv run our-pocket ledger --account "TR Demo"
+make app        # http://localhost:8501: balances over time, review and commit staged batches
 ```
 
 Real exports go in git-ignored `data/raw/`:

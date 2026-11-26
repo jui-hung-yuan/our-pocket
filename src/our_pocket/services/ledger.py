@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import ColumnElement, Connection, Select, func, select
 
 from our_pocket.db.schema import account, ledger_entry
+from our_pocket.services.cost_basis import CostBasis
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,20 @@ class CashBalance:
     known: Decimal
     unverified_entries: int
     unverified_amount: Decimal
+
+
+@dataclass(frozen=True)
+class HistoryPoint:
+    """The end of one day with entries: cash from cash effects (unverified types left out,
+    as in CashBalance.known) and the positions held, at cost (D-031)."""
+
+    day: date
+    cash: Decimal
+    positions_at_cost: Decimal
+
+    @property
+    def total(self) -> Decimal:
+        return self.cash + self.positions_at_cost
 
 
 class LedgerService:
@@ -84,14 +99,49 @@ class LedgerService:
             t: (n, tax) for t, n, tax in self.conn.execute(self._for_account(stmt, account_name))
         }
 
+    def history(
+        self, account_name: str | None = None, institution: str | None = None
+    ) -> list[HistoryPoint]:
+        """Cash and positions at cost at the end of every day with entries, oldest first,
+        for one account, one institution's accounts, or all of them. Raises MissingBuys if
+        a sale is larger than the holding before it."""
+        le = ledger_entry.c
+        stmt = select(
+            le.booking_date, le.account_id, le.entry_type, le.isin, le.quantity, le.cash_effect
+        ).order_by(le.booking_date, le.booked_at.nulls_first(), le.id)
+        points: list[HistoryPoint] = []
+        cash = Decimal(0)
+        cost = CostBasis()
+        for entry in self.conn.execute(self._for_account(stmt, account_name, institution)):
+            cash += entry.cash_effect or 0
+            holding = (entry.account_id, entry.isin)
+            if entry.entry_type == "buy":
+                cost.buy(holding, entry.quantity, -entry.cash_effect)  # fees included
+            elif entry.entry_type == "sell":
+                cost.sell(holding, -entry.quantity, entry.booking_date)
+            point = HistoryPoint(entry.booking_date, cash, cost.total)
+            if points and points[-1].day == point.day:
+                points[-1] = point
+            else:
+                points.append(point)
+        return points
+
+    def last_entry_id(self) -> int:
+        """Changes whenever entries are committed: a cheap cache key for the history."""
+        latest: int | None = self.conn.execute(select(func.max(ledger_entry.c.id))).scalar_one()
+        return latest or 0
+
     @staticmethod
     def _until(as_of: date | None) -> list[ColumnElement[bool]]:
         return [] if as_of is None else [ledger_entry.c.booking_date <= as_of]
 
     @staticmethod
-    def _for_account(stmt: Select[Any], account_name: str | None) -> Select[Any]:
-        if account_name is None:
+    def _for_account(
+        stmt: Select[Any], account_name: str | None, institution: str | None = None
+    ) -> Select[Any]:
+        conditions = [account.c.name == account_name] if account_name is not None else []
+        if institution is not None:
+            conditions.append(account.c.institution == institution)
+        if not conditions:
             return stmt
-        return stmt.join(account, account.c.id == ledger_entry.c.account_id).where(
-            account.c.name == account_name
-        )
+        return stmt.join(account, account.c.id == ledger_entry.c.account_id).where(*conditions)

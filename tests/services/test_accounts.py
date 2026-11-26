@@ -14,6 +14,13 @@ def test_unknown_account(conn):
         AccountService(conn).get("nope")
 
 
+def test_accounts_are_listed_by_name(conn):
+    accounts = AccountService(conn)
+    accounts.add("TR", "trade_republic", owner="Alex")
+    accounts.add("N26 Main", "n26", owner="Alex", export_account_name="Main")
+    assert [a.name for a in accounts.list_accounts()] == ["N26 Main", "TR"]
+
+
 def test_export_name_is_stored_stripped(conn):
     created = AccountService(conn).add("Shared", "n26", export_account_name=" Alex & Sam 🫶 ")
     assert created.export_account_name == "Alex & Sam 🫶"

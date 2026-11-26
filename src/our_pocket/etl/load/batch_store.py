@@ -269,6 +269,11 @@ class BatchStore:
 
     # --- reading ------------------------------------------------------------------
 
+    def find_batch_ids(self, status: str) -> list[int]:
+        """Ids of the batches in `status` (e.g. "staged"), oldest first."""
+        stmt = select(import_batch.c.id).where(import_batch.c.status == status)
+        return list(self.conn.execute(stmt.order_by(import_batch.c.id)).scalars())
+
     def report(self, batch_id: int) -> BatchReport:
         row = self.conn.execute(
             select(import_batch, account.c.name.label("account_name"))

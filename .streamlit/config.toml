@@ -1,0 +1,10 @@
+# The app shows real amounts and can commit batches: local only, no usage statistics.
+[server]
+address = "localhost"
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"  # no Deploy button

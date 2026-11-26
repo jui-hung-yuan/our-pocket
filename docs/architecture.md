@@ -10,12 +10,13 @@ The diagrams are Mermaid: GitHub renders them, and so does VS Code with the
 flowchart TB
     subgraph interfaces["interfaces/  (how people and agents get in)"]
         CLI["cli.py"]
+        WEB["web/<br/>Streamlit app"]
         TOOLS["agent tools / MCP server<br/><i>V3, not built yet</i>"]
     end
 
     subgraph services["services/  (the application API)"]
         ACC["AccountService"]
-        LED["LedgerService<br/>read-only"]
+        LED["LedgerService<br/>read-only, history at cost"]
         REC["ReconciliationService<br/>ledger vs app snapshot"]
     end
 
@@ -40,6 +41,9 @@ flowchart TB
     CLI --> ACC
     CLI --> LED
     CLI --> REC
+    WEB --> ACC
+    WEB --> LED
+    WEB --> LD
     REC --> LED
     CLI --> PIPE
     CLI --> LD
@@ -304,7 +308,10 @@ Row-level security in Postgres then limits each household member to their own ro
 | `etl/load/batch_store.py` | `BatchStore`: stage / commit / reject / report |
 | `etl/pipeline.py` | `ImportPipeline`: extract → identify → transform → check the account → stage |
 | `services/accounts.py` | `AccountService`: create and look up accounts |
-| `services/ledger.py` | `LedgerService`: read-only queries over the ledger |
+| `services/ledger.py` | `LedgerService`: read-only queries over the ledger, incl. `history()` for the chart |
+| `services/cost_basis.py` | `CostBasis`: average cost of the shares still held (D-031) |
+| `services/reconciliation.py` | `ReconciliationService`: the ledger against a typed app snapshot (D-026) |
 | `interfaces/cli.py` | `our-pocket` command line |
+| `interfaces/web/` | Streamlit app (`make app`): Balances and Review pages (D-032) |
 | `synthetic/trade_republic.py` | Seeded generator for Trade Republic test exports |
 | `synthetic/n26.py` | Seeded generator for N26 exports: three spaces, moves between them, and one-legged moves from another member's space |

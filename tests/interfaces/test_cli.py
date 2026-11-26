@@ -6,7 +6,6 @@ stderr, no traceback) and for a reconciliation that differs, 0 otherwise.
 
 import json
 import re
-from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 
@@ -34,27 +33,9 @@ def run(capsys, *argv: str) -> tuple[int, str, str]:
     return code, out, err
 
 
-class SharedConnection:
-    """Stands in for the engine: every command runs on the test's connection, which is
-    rolled back afterwards. A command's transaction is a savepoint, so a failing command
-    undoes its own writes as it would against the real database."""
-
-    def __init__(self, conn) -> None:
-        self.conn = conn
-
-    @contextmanager
-    def begin(self):
-        with self.conn.begin_nested():
-            yield self.conn
-
-    @contextmanager
-    def connect(self):
-        yield self.conn
-
-
 @pytest.fixture
-def database(conn, monkeypatch):
-    monkeypatch.setattr(cli, "get_engine", lambda: SharedConnection(conn))
+def database(conn, shared_connection, monkeypatch):
+    monkeypatch.setattr(cli, "get_engine", lambda: shared_connection)
     return conn
 
 
