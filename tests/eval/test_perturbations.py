@@ -33,8 +33,8 @@ TRANSFORM_SOURCES = Path(__file__).resolve().parents[2] / "src/our_pocket/etl/tr
 REGISTRY = default_registry()
 CLEAN_TRADE_REPUBLIC = synth_tr.generate(seed=42)
 CLEAN_N26 = synth_n26.generate(seed=42)
-# Flags on clean data that aren't false flags: STOCKPERK's cash meaning is still open (Q1).
-EXPECTED_ON_CLEAN = {("STOCKPERK", "warning", "cash_semantics_unverified")}
+# Raised only for types in UNVERIFIED_CASH_TYPES, which has none left (D-035): nothing to plant.
+NOT_PLANTABLE = {"cash_semantics_unverified"}
 
 
 @dataclass(frozen=True)
@@ -326,7 +326,6 @@ def _false_flags(parsed: list[ParsedRow], planted: int) -> list[tuple[int, str]]
         for i, row in enumerate(parsed)
         if i != planted
         for flag in row.flags
-        if (row.source_type, flag.severity, flag.code) not in EXPECTED_ON_CLEAN
     ]
 
 
@@ -369,9 +368,8 @@ def test_every_row_flag_the_parsers_can_raise_has_a_planted_defect():
         "trade_republic": {d.expected[1] for d in TRADE_REPUBLIC_DEFECTS if d.expected},
         "n26": {d.expected[1] for d in N26_DEFECTS if d.expected},
     }
-    raised_on_clean = {code for _, _, code in EXPECTED_ON_CLEAN}
     for institution, codes in planted.items():
-        own = _codes_in(TRANSFORM_SOURCES / f"{institution}.py") - raised_on_clean
+        own = _codes_in(TRANSFORM_SOURCES / f"{institution}.py") - NOT_PLANTABLE
         assert own - codes == set(), institution
     assert shared - set().union(*planted.values()) == set()
     assert len(TRADE_REPUBLIC_DEFECTS) + len(N26_DEFECTS) >= 30

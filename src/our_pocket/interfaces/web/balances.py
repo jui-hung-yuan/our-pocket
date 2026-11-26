@@ -115,7 +115,7 @@ def render() -> None:
     st.caption(
         f"As of {end}; change since {start}. Positions at cost: average cost, fees included "
         "(market value needs daily prices). Cash leaves out entries whose cash meaning is "
-        "unverified (STOCKPERK)."
+        "unverified."
     )
     series = {
         "total": [(p.day, p.total) for p in points],

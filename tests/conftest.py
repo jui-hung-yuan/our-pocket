@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 
 from our_pocket.db.schema import SCHEMAS
 from our_pocket.etl.models import Account
+from our_pocket.etl.transform import trade_republic
 from our_pocket.services import AccountService
 from our_pocket.synthetic import n26 as synth_n26
 from our_pocket.synthetic import trade_republic as synth_tr
@@ -66,6 +67,13 @@ def conn(engine):
         tx = connection.begin()
         yield connection
         tx.rollback()
+
+
+@pytest.fixture
+def stockperk_unverified(monkeypatch):
+    """STOCKPERK's cash meaning open again, as until D-035: the synthetic export then has one
+    row with a warning and no cash effect, for tests of that rule."""
+    monkeypatch.setattr(trade_republic, "UNVERIFIED_CASH_TYPES", frozenset({"STOCKPERK"}))
 
 
 @pytest.fixture

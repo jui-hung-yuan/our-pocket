@@ -145,13 +145,15 @@ def _snapshot(tmp_path, export: synth_tr.SyntheticExport, cash: Decimal) -> str:
 
 
 @pytest.mark.db
-def test_import_review_commit_and_reconcile(capsys, database, synthetic, tmp_path):
+def test_import_review_commit_and_reconcile(
+    capsys, database, synthetic, tmp_path, stockperk_unverified
+):
     run(capsys, "account", "add", "TR Depot", "--institution", "trade_republic", "--owner", "Alex")
 
     code, out, _ = run(capsys, "import", str(TRADE_REPUBLIC_FIXTURE), "--account", "TR Depot")
     assert code == 0
     batch = _batch_id(out)
-    assert "[staged]" in out and "parser 3" in out
+    assert "[staged]" in out and "parser 4" in out
     assert "cash_semantics_unverified" in out
     assert f"batch commit {batch} --accept-warnings" in out
 
@@ -165,7 +167,9 @@ def test_import_review_commit_and_reconcile(capsys, database, synthetic, tmp_pat
     code, out, _ = run(capsys, "ledger", "--account", "TR Depot")
     assert code == 0 and f"positions ({len(synthetic.holdings)})" in out
 
-    cash = synthetic.cash.quantize(Decimal("0.01"))
+    # The app's cash as the ledger counts it while STOCKPERK is unverified: without the perk.
+    perks = sum(Decimal(r["amount"]) for r in synthetic.rows if r["type"] == "STOCKPERK")
+    cash = (synthetic.cash - perks).quantize(Decimal("0.01"))
     code, out, _ = run(capsys, "reconcile", _snapshot(tmp_path, synthetic, cash))
     assert (code, out.rstrip().splitlines()[-1]) == (0, "result: matches")
 

@@ -106,7 +106,7 @@ class CashCheck:
     @property
     def matches_if_unverified_is_cash(self) -> bool:
         """Would counting the unverified entries' amounts as cash close the gap? That's
-        the evidence that settles what such a type moves (STOCKPERK, Q1)."""
+        the evidence that settles what such a type moves (Q1)."""
         if self.ledger.unverified_entries == 0:
             return False
         gap = self.difference + self.ledger.unverified_amount

@@ -76,8 +76,7 @@ class SyntheticExport:
     rows: list[dict[str, str]]
     holdings: dict[str, Decimal]
     type_counts: Counter[str] = field(default_factory=Counter)
-    # Cash the generator moved, leaving out types whose cash meaning is unverified
-    # (STOCKPERK): the balance the app would show if those rows move no cash.
+    # Cash the generator moved: the balance the app would show.
     cash: Decimal = Decimal(0)
 
     def to_csv_bytes(self) -> bytes:
@@ -135,11 +134,10 @@ class _Generator:
         )
         for key, value in fields.items():
             row[key] = value if isinstance(value, str) else _format_decimal(value)
-        if tr_type != "STOCKPERK":
-            for key in ("amount", "fee", "tax"):
-                value = fields.get(key)
-                if isinstance(value, Decimal):
-                    self.cash += value
+        for key in ("amount", "fee", "tax"):
+            value = fields.get(key)
+            if isinstance(value, Decimal):
+                self.cash += value
         self.rows.append((ts, row))
 
     def _instrument_fields(self, instrument: Instrument) -> dict[str, str]:

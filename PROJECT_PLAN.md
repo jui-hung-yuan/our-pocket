@@ -116,7 +116,7 @@ Trade Republic v1 flag catalogue: `missing_field`, `unparseable_value`, `unknown
 `unexpected_sign`, `trade_arithmetic` (|amount| = |shares| × price ± 0.01), `fx_incomplete`,
 `fx_mismatch` (original × fx_rate = amount ± 0.01), `invalid_isin` (check digit), `invalid_iban`
 (mod 97), `invalid_currency`, `unexpected_account_type`, `duplicate_in_file`,
-`tax_row_has_amount`, `cash_semantics_unverified` (`STOCKPERK` only), `already_in_ledger`.
+`tax_row_has_amount`, `cash_semantics_unverified` (no type left, D-035), `already_in_ledger`.
 
 **Idempotency:** the same file twice is refused; an overlapping export (e.g. Jan–Jun, then Jan–Dec) only
 adds new `transaction_id`s. Both are tested.
@@ -146,14 +146,14 @@ The synthetic suites are pytest files in `tests/eval/`, so they run in `make che
 uv run our-pocket reconcile data/raw/trade_republic/app_<date>.json
 ```
 
-It counts entries booked up to `as_of`, and says whether counting `STOCKPERK` amounts as cash
-would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconcile-against-a-hand-typed-app-snapshot)).
+It counts entries booked up to `as_of`, and says whether counting the entries with unverified cash
+meaning as cash would close a cash gap: that settled Q1 ([D-026](docs/decisions.md#d-026-reconcile-against-a-hand-typed-app-snapshot)).
 
 - Synthetic generator rules: invented ISINs and IBANs with valid check digits, the real export's quoting
   and number formats, mixed timestamp precisions, late trades booked on the next local day.
 - **Circularity caveat:** the generator encodes my reading of the format. Real-data reconciliation is
-  the check on that reading. It already caught one mistake: the generator put tax-only rows' money
-  in `amount` (D-016). `STOCKPERK` is where my reading is still unproven.
+  the check on that reading. It caught three: the generator put tax-only rows' money in `amount`
+  (D-016), and N26 `Authorization` and Trade Republic `STOCKPERK` are cash (D-034, D-035).
 - **CI:** `make check` on every PR and on `main`: lint, mypy, real-data guard, layer boundaries, migration
   round trip, and all suites on synthetic data (`REQUIRE_DB=1`, so DB tests can't silently skip).
   Real-data runs and their results stay local. See [docs/checks.md](docs/checks.md).
@@ -180,7 +180,7 @@ would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconc
 
 | # | Question | Status |
 |---|---|---|
-| Q1 | Cash meaning of `EARNINGS`, `PRE_DETERMINED_TAX_BASE`, `TAX_OPTIMIZATION`, `STOCKPERK` (and N26 `Authorization`): is `amount` cash, or only `tax`? Settle by reconciling against the app's cash balance | answered for the three tax types: `amount` is 0, `tax` is cash ([D-016](docs/decisions.md#d-016-tax-only-rows-move-cash-through-tax-parser-v2)); `STOCKPERK` open; N26 `Authorization` is cash ([D-034](docs/decisions.md#d-034-n26-authorization-is-cash-n26-parser-4)) |
+| Q1 | Cash meaning of `EARNINGS`, `PRE_DETERMINED_TAX_BASE`, `TAX_OPTIMIZATION`, `STOCKPERK` (and N26 `Authorization`): is `amount` cash, or only `tax`? Settle by reconciling against the app's cash balance | answered for the three tax types: `amount` is 0, `tax` is cash ([D-016](docs/decisions.md#d-016-tax-only-rows-move-cash-through-tax-parser-v2)); `STOCKPERK` ([D-035](docs/decisions.md#d-035-trade-republic-stockperk-is-cash-tr-parser-4)) and N26 `Authorization` ([D-034](docs/decisions.md#d-034-n26-authorization-is-cash-n26-parser-4)) are cash |
 | Q2 | Is `TRANSFER_INBOUND` vs `CUSTOMER_INBOUND` meaningful for transfer matching (P2)? | moot: legs aren't paired ([D-021](docs/decisions.md#d-021-flag-moves-between-n26-spaces-dont-pair-transfer-legs)) |
 | Q3 | Do Trade Republic exports overlap between months, or is each a clean partition? (The pipeline handles both) | open |
 | Q4 | N26 export: one file per account/space, all with the same header? | answered: same header; mostly one file per space, but a file can include rows of a deleted space; files are imported per space and `Account Name` is checked ([D-022](docs/decisions.md#d-022-n26-imports-name-their-account-account-name-is-only-checked)) |

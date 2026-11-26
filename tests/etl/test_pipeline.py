@@ -47,17 +47,14 @@ def test_happy_path_reaches_the_ledger_with_ground_truth_holdings(conn, tr_accou
     report = BatchStore(conn).report(batch_id)
     assert report.status == "staged"
     assert (report.schema_id, report.schema_version, report.parser_version) == (
-        "trade_republic.transactions_csv", 1, "3",
+        "trade_republic.transactions_csv", 1, "4",
     )  # fmt: skip
     assert report.row_count == len(synthetic.rows)
     assert report.errors == 0
-    assert report.warnings > 0  # STOCKPERK: cash_semantics_unverified
+    assert report.warnings == 0
     assert _count(conn, ledger_entry) == 0, "staging must never touch the ledger"
 
-    with pytest.raises(CommitBlocked, match="warning"):
-        BatchStore(conn).commit(batch_id)
-
-    result = BatchStore(conn).commit(batch_id, accept_warnings=True)
+    result = BatchStore(conn).commit(batch_id)
     assert (result.inserted, result.skipped_duplicates) == (len(synthetic.rows), 0)
     assert BatchStore(conn).report(batch_id).status == "committed"
 
@@ -65,7 +62,8 @@ def test_happy_path_reaches_the_ledger_with_ground_truth_holdings(conn, tr_accou
     assert ledger.positions(tr_account.name) == synthetic.holdings
     totals = ledger.totals_by_type(tr_account.name)
     assert sum(n for n, _ in totals.values()) == len(synthetic.rows)
-    assert totals["bonus"][1] is None  # STOCKPERK: unverified cash semantics stay NULL
+    perks = [Decimal(r["amount"]) for r in synthetic.rows if r["type"] == "STOCKPERK"]
+    assert totals["bonus"] == (len(perks), sum(perks))  # STOCKPERK is cash (D-035)
 
     tax_column = [Decimal(r["tax"]) for r in synthetic.rows if r["tax"]]
     taxes = ledger.taxes(tr_account.name)

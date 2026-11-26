@@ -73,7 +73,7 @@ def test_position_missing_from_the_app_never_matches():
 @pytest.fixture
 def committed(conn, tr_account, synthetic):
     batch_id = ImportPipeline(conn).run(synthetic.to_csv_bytes(), "tr.csv", tr_account)
-    BatchStore(conn).commit(batch_id, accept_warnings=True)
+    BatchStore(conn).commit(batch_id, accept_warnings=True)  # warnings: stockperk_unverified
     return synthetic
 
 
@@ -92,15 +92,18 @@ def test_ledger_matches_what_the_app_would_show(conn, committed):
     result = ReconciliationService(conn).reconcile(_app_view(committed))
     assert result.matches
     assert [p.isin for p in result.positions] == sorted(committed.holdings)
-    assert result.cash.ledger.unverified_entries == 1  # the STOCKPERK row
+    assert result.cash.ledger.unverified_entries == 0
     assert not result.cash.matches_if_unverified_is_cash
 
 
 @pytest.mark.db
-def test_cash_gap_of_exactly_the_unverified_amounts_is_reported(conn, committed):
-    """The STOCKPERK question (Q1): if the app's cash is higher by their amount, they're cash."""
-    app_cash = (committed.cash + Decimal("25.00")).quantize(Decimal("0.01"))
-    result = ReconciliationService(conn).reconcile(_app_view(committed, cash=app_cash))
+def test_cash_gap_of_exactly_the_unverified_amounts_is_reported(
+    conn, stockperk_unverified, committed
+):
+    """How STOCKPERK was settled (D-035): left out of the ledger's cash, the app's cash was
+    higher by exactly its amount."""
+    result = ReconciliationService(conn).reconcile(_app_view(committed))
+    assert result.cash.ledger.unverified_entries == 1
     assert not result.cash.matches
     assert result.cash.matches_if_unverified_is_cash
 
@@ -126,11 +129,7 @@ def test_only_entries_up_to_the_snapshot_date_count(conn, committed):
     for r in upto:
         if r["type"] in ("BUY", "SELL"):
             held[r["symbol"]] = held.get(r["symbol"], Decimal(0)) + Decimal(r["shares"])
-    cash = sum(
-        Decimal(r["amount"]) + Decimal(r["fee"] or 0) + Decimal(r["tax"] or 0)
-        for r in upto
-        if r["type"] != "STOCKPERK"
-    )
+    cash = sum(Decimal(r["amount"]) + Decimal(r["fee"] or 0) + Decimal(r["tax"] or 0) for r in upto)
     snapshot = _app_view(committed, as_of=as_of, cash=cash, positions=held)
     result = ReconciliationService(conn).reconcile(snapshot)
     assert held and held != committed.holdings
