@@ -57,6 +57,28 @@ def test_warnings_must_be_accepted_before_commit(app_database, tr_account, synth
     assert "Nothing to review" in page.info[0].value
 
 
+def test_each_flag_shows_the_raw_fields_of_its_line(app_database, tr_account, synthetic):
+    _stage(app_database, tr_account, synthetic)  # STOCKPERK: one warning
+    page = AppTest.from_function(_page, default_timeout=10).run()
+    [flag] = page.dataframe[1].value.to_dict("records")
+    perk = next(r for r in synthetic.rows if r["type"] == "STOCKPERK")
+    assert flag["code"] == "cash_semantics_unverified"
+    assert flag["transaction_id"] == perk["transaction_id"]
+    assert flag["type"] == "STOCKPERK"
+
+
+def test_a_raw_field_named_like_a_flag_column_does_not_overwrite_it():
+    from our_pocket.interfaces.web.review import _with_raw_fields
+
+    flag = {"code": "unknown_type", "line_number": 7, "message": "unknown type"}
+    row = _with_raw_fields(flag, {7: {"message": "Rent", "amount": "-900"}})
+    assert row == flag | {"file: message": "Rent", "amount": "-900"}
+    assert _with_raw_fields({"code": "x", "line_number": None}, {}) == {
+        "code": "x",
+        "line_number": None,
+    }
+
+
 def test_errors_leave_only_rejecting(app_database, tr_account, synthetic):
     rows = [dict(r) for r in synthetic.rows]
     rows[3]["amount"] = "not-a-number"

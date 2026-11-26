@@ -2,11 +2,19 @@
 CLI, since both call BatchStore: errors block a commit, warnings need accepting."""
 
 from collections import Counter
+from typing import Any
 
 import streamlit as st
 
 from our_pocket.etl.load import BatchError, BatchReport, BatchStore
 from our_pocket.interfaces.web import database
+
+
+def _with_raw_fields(flag: dict[str, Any], raw_rows: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    """A flag followed by its line's fields as imported; a field named like a flag column is
+    shown as `file: <name>`."""
+    raw = raw_rows.get(flag["line_number"], {})
+    return flag | {(f"file: {k}" if k in flag else k): v for k, v in raw.items()}
 
 
 def _decide(report: BatchReport) -> None:
@@ -58,6 +66,9 @@ def render() -> None:
         return
     choices = {f"#{r.batch_id}  {r.file_name} → {r.account}": r for r in reports}
     report = choices[st.selectbox("Staged batch", list(choices)) or next(iter(choices))]
+    flagged_lines = sorted({f["line_number"] for f in report.flags if f["line_number"]})
+    with database.engine().connect() as conn:
+        raw_rows = BatchStore(conn).find_raw_rows(report.batch_id, flagged_lines)
 
     columns = st.columns(4)
     columns[0].metric("Rows", report.row_count, border=True)
@@ -73,6 +84,6 @@ def render() -> None:
             [{"severity": s, "code": c, "rows": n} for (s, c), n in sorted(by_code.items())],
             hide_index=True,
         )
-        st.caption("Each flag, with the line it points at in the file:")
-        st.dataframe(report.flags, hide_index=True)
+        st.caption("Each flag, then the file's own fields on the line it points at:")
+        st.dataframe([_with_raw_fields(f, raw_rows) for f in report.flags], hide_index=True)
     _decide(report)

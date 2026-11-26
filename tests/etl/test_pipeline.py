@@ -164,6 +164,15 @@ def test_batches_are_found_by_status(conn, tr_account, synthetic):
     assert store.find_batch_ids("rejected") == [rejected]
 
 
+def test_raw_rows_are_found_by_line_number(conn, tr_account, synthetic):
+    """The file's own fields, so a reviewer sees what a flagged line said. Line 1 is the
+    header, so data row i is on line i + 2."""
+    batch_id = _stage(conn, synthetic, tr_account)
+    raw_rows = BatchStore(conn).find_raw_rows(batch_id, [2, 5, 10_000])
+    assert sorted(raw_rows) == [2, 5]  # a line past the end is simply absent
+    assert raw_rows[5]["transaction_id"] == synthetic.rows[3]["transaction_id"]
+
+
 def test_errors_block_commit_until_rejected_and_reimported(conn, tr_account, synthetic):
     rows = [dict(r) for r in synthetic.rows]
     rows[5]["amount"] = "not-a-number"

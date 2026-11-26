@@ -274,6 +274,13 @@ class BatchStore:
         stmt = select(import_batch.c.id).where(import_batch.c.status == status)
         return list(self.conn.execute(stmt.order_by(import_batch.c.id)).scalars())
 
+    def find_raw_rows(self, batch_id: int, line_numbers: list[int]) -> dict[int, dict[str, Any]]:
+        """The file's own fields at `line_numbers` of a batch, as imported, by line number."""
+        stmt = select(raw_row.c.line_number, raw_row.c.data).where(
+            raw_row.c.batch_id == batch_id, raw_row.c.line_number.in_(line_numbers)
+        )
+        return {r.line_number: r.data for r in self.conn.execute(stmt)}
+
     def report(self, batch_id: int) -> BatchReport:
         row = self.conn.execute(
             select(import_batch, account.c.name.label("account_name"))
