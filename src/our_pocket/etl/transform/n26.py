@@ -11,6 +11,9 @@ Conventions observed in real exports (see docs/decisions.md, D-019 to D-023):
   are real and both count.
 - Dates only, no time. `Amount (EUR)` is signed. The FX columns are filled only on card
   rows: `Original Amount` is unsigned and |amount| = original x rate.
+- `Authorization` is a card hold that never became a `Presentment` (seen once, positive). Its
+  sign gives the type, like MoneyBeam's; whether it moved cash is unverified, so its
+  cash_effect stays empty with a warning until a reconciliation settles it (D-030).
 - A transfer without a partner IBAN is a move between N26 spaces, and its partner name is
   the other space's name. That space can belong to another member of a shared space, so
   the name doesn't say whose it is.
@@ -53,6 +56,14 @@ TYPE_MAP: dict[str, str] = {
 }
 # MoneyBeam (N26's transfer to another N26 user) goes either way; its sign gives the type.
 MONEYBEAM = "MoneyBeam"
+# A card authorization: a hold (negative) or a released hold or refund (positive), by sign.
+AUTHORIZATION = "Authorization"
+SIGNED_TYPES: dict[str, tuple[str, str]] = {  # source type: (entry type if < 0, if > 0)
+    MONEYBEAM: ("transfer_out", "transfer_in"),
+    AUTHORIZATION: ("card_payment", "card_refund"),
+}
+# Types whose amount may not be cash that moved (D-030): cash_effect stays NULL until verified.
+UNVERIFIED_CASH_TYPES = frozenset({AUTHORIZATION})
 # Transfers without a partner IBAN move money between N26 spaces.
 SPACE_TRANSFER: dict[str, str] = {
     "transfer_in": "space_transfer_in",
@@ -86,7 +97,7 @@ class N26V1(Transformer):
     institution = "n26"
     schema_name = "transactions_csv"
     schema_version = 1
-    parser_version = "2"
+    parser_version = "3"
     columns = COLUMNS_V1
     account_column = "account name"
 
@@ -146,10 +157,11 @@ class N26V1(Transformer):
     def _entry_type(row: ParsedRow, money: Decimal | None) -> str | None:
         if row.source_type is None:
             return None
-        if row.source_type == MONEYBEAM:
+        if row.source_type in SIGNED_TYPES:
             if money is None:
                 return None
-            return "transfer_out" if money < 0 else "transfer_in"
+            negative, positive = SIGNED_TYPES[row.source_type]
+            return negative if money < 0 else positive
         entry_type = TYPE_MAP.get(row.source_type)
         if entry_type is None:
             row.flag("unknown_type", "error", f"unknown type {row.source_type!r}", "type")
@@ -168,12 +180,20 @@ class N26V1(Transformer):
             row.amount, row.fee = Decimal(0), money
         elif row.entry_type == "tax":
             row.amount, row.tax = Decimal(0), money
+        if row.source_type in UNVERIFIED_CASH_TYPES:
+            row.flag(
+                "cash_semantics_unverified",
+                "warning",
+                f"cash meaning of {row.source_type} is unverified; cash_effect left empty",
+                "amount (eur)",
+            )
+            return
         row.cash_effect = row.amount + row.fee + row.tax
 
     @staticmethod
     def _check_sign(row: ParsedRow, money: Decimal | None) -> None:
         expected = EXPECTED_SIGN.get(row.entry_type or "")
-        if expected is None or money is None or row.source_type == MONEYBEAM or money == 0:
+        if expected is None or money is None or row.source_type in SIGNED_TYPES or money == 0:
             return
         if (money > 0) != (expected > 0):
             row.flag(

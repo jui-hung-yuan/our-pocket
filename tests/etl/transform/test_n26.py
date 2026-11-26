@@ -165,3 +165,16 @@ def test_external_id_changes_with_any_value():
 def test_zero_amount_has_no_sign_flag():
     row = _parse(_row(**{"amount (eur)": "0", "original amount": "0"}))
     assert ("warning", "unexpected_sign") not in _codes(row)
+
+
+@pytest.mark.parametrize(
+    "amount, entry_type", [("25.00", "card_refund"), ("-25.00", "card_payment")]
+)
+def test_authorization_is_typed_by_sign_with_its_cash_meaning_unverified(amount, entry_type):
+    """A hold that never became a Presentment (D-030): typed, kept, but not counted as cash
+    until a reconciliation against the app's balance settles it."""
+    row = _parse(_row(type="Authorization", **{"amount (eur)": amount, "original amount": "25"}))
+    assert row.entry_type == entry_type
+    assert row.amount == Decimal(amount)
+    assert row.cash_effect is None
+    assert _codes(row) == {("warning", "cash_semantics_unverified")}

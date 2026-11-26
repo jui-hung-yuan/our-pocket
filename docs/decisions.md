@@ -352,3 +352,15 @@ so two folders can each have a `test_n26.py`.
 marker does that).
 **Why:** a failing test points at the module to open, and a new module's tests have one obvious place.
 
+### D-030: N26 `Authorization` is typed by sign, its cash meaning unverified (N26 parser 3)
+*2026-11-26*
+
+**Chose:** an `Authorization` row becomes `card_payment` if negative and `card_refund` if
+positive, with `cash_effect` left NULL and a `cash_semantics_unverified` warning, as for
+`STOCKPERK` (D-007). **Over:** refusing the type (the batch could never be committed), or
+counting it as cash.
+**Why:** a real Main export holds one, from 2023: a positive card authorization that never became
+a `Presentment`, with no other row from that partner. Whether N26 counted it in the balance
+can't be read from the file. Reconciling the account against the app's balance settles it:
+`reconcile` reports whether counting it closes a gap (Q1).
+
