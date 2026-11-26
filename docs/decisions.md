@@ -362,7 +362,7 @@ counting it as cash.
 **Why:** a real Main export holds one, from 2023: a positive card authorization that never became
 a `Presentment`, with no other row from that partner. Whether N26 counted it in the balance
 can't be read from the file. Reconciling the account against the app's balance settles it:
-`reconcile` reports whether counting it closes a gap (Q1).
+`reconcile` reports whether counting it closes a gap (Q1). **Settled by D-034.**
 
 ### D-031: Positions in the chart are valued at cost, by average cost
 *2026-11-25*
@@ -398,3 +398,12 @@ a body for why and a footer for `Refs: D-NNN`; one PR template; "Rebase and merg
 **Why:** the history is read back to study and review changes: a type and scope make `git log`
 filterable (`git log --grep '^fix(n26)'`), and rebase merging keeps each commit on `main`. A
 local hook needs no dependency; the earlier commits stay as they are.
+
+### D-034: N26 `Authorization` is cash (N26 parser 4)
+*2026-11-26*
+
+**Chose:** count an `Authorization` row's amount as cash, with no flag; the type still comes
+from the sign (D-030). **Over:** keeping `cash_effect` NULL.
+**Why:** reconciling Main against the app, the app's balance was higher than the ledger by
+exactly the one positive `Authorization` row, so N26 counted it. An account imported with
+parser 3 is reset and imported again (D-027).
