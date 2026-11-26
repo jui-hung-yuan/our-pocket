@@ -1,5 +1,7 @@
-# Install once per clone: `make hooks` (runs `pre-commit install`).
+# Install once per clone: `make hooks` (runs `pre-commit install`, both hook types below).
 # Bypassing with `git commit --no-verify` doesn't help: CI runs the same guard via `make check`.
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
 repos:
   - repo: local
     hooks:
@@ -18,3 +20,8 @@ repos:
         entry: uv run ruff format --check --force-exclude
         language: system
         types: [python]
+      - id: commit-message
+        name: commit message is Conventional Commits (D-033)
+        entry: uv run python scripts/check_commit_message.py
+        language: system
+        stages: [commit-msg]

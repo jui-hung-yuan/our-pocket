@@ -1,12 +1,12 @@
 # Checks
 
-One command runs everything: **`make check`**. GitHub Actions runs the same command on every push
-to any branch and on every pull request (`.github/workflows/ci.yml`), against a real Postgres 17.
+One command runs everything: **`make check`**. GitHub Actions runs the same command on every pull
+request and on every push to `main` (`.github/workflows/ci.yml`), against a real Postgres 17.
 A pre-commit hook adds a local guard so real financial data is stopped before it reaches git.
 
 ```bash
 make db        # once: Postgres in Docker (databases pocket + pocket_test)
-make hooks     # once per clone: install the pre-commit guard
+make hooks     # once per clone: install the pre-commit guard and commit-message check
 make check     # before pushing
 ```
 
@@ -61,6 +61,28 @@ including a test that the repository is clean.
 
 **If the guard blocks a commit:** move the file to `data/raw/` (ignored), or regenerate synthetic
 data with `make synthetic`. Don't bypass it. If a rule is wrong, change the rule and its test.
+
+## Commit messages and pull requests
+
+The commit-msg hook (`scripts/check_commit_message.py`, after `make hooks`) refuses a header
+that isn't `type(scope): description` ([D-033](decisions.md#d-033-conventional-commits-and-one-pull-request-template)):
+
+```text
+fix(n26): type Authorization by sign, cash meaning unverified
+
+Why the change was needed, and what it means for data already imported.
+
+Refs: D-030
+Co-Authored-By: ...
+```
+
+- **type:** one of the `TYPES` in the script; `!` after the scope marks a breaking change.
+- **scope:** the area touched, lower-case: `n26`, `trade-republic`, `cli`, `web`, `ledger`,
+  `ci`. Leave it out only when a change has no single area.
+- **body:** why, wrapped at 72. **Footer:** `Refs: D-NNN`, `BREAKING CHANGE: ...`, co-authors.
+
+A pull request starts from `.github/pull_request_template.md`. Merge with "Rebase and merge" so
+each commit stays in `main`'s history.
 
 ## Type checking scope
 

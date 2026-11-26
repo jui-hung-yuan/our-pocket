@@ -145,6 +145,34 @@ def test_resaved_file_adds_nothing(conn, tr_account, synthetic):
     assert (result.inserted, result.skipped_duplicates) == (0, len(synthetic.rows))
 
 
+def test_batches_are_found_by_status(conn, tr_account, synthetic):
+    store = BatchStore(conn)
+    committed = _stage(
+        conn, SyntheticExport(rows=synthetic.rows[:5], holdings={}), tr_account, "a.csv"
+    )
+    store.commit(committed, accept_warnings=True)
+    rejected = _stage(
+        conn, SyntheticExport(rows=synthetic.rows[5:9], holdings={}), tr_account, "b.csv"
+    )
+    store.reject(rejected, "test")
+    staged = [
+        _stage(conn, SyntheticExport(rows=synthetic.rows[:n], holdings={}), tr_account, name)
+        for n, name in ((20, "c.csv"), (30, "d.csv"))
+    ]
+    assert store.find_batch_ids("staged") == staged
+    assert store.find_batch_ids("committed") == [committed]
+    assert store.find_batch_ids("rejected") == [rejected]
+
+
+def test_raw_rows_are_found_by_line_number(conn, tr_account, synthetic):
+    """The file's own fields, so a reviewer sees what a flagged line said. Line 1 is the
+    header, so data row i is on line i + 2."""
+    batch_id = _stage(conn, synthetic, tr_account)
+    raw_rows = BatchStore(conn).find_raw_rows(batch_id, [2, 5, 10_000])
+    assert sorted(raw_rows) == [2, 5]  # a line past the end is simply absent
+    assert raw_rows[5]["transaction_id"] == synthetic.rows[3]["transaction_id"]
+
+
 def test_errors_block_commit_until_rejected_and_reimported(conn, tr_account, synthetic):
     rows = [dict(r) for r in synthetic.rows]
     rows[5]["amount"] = "not-a-number"

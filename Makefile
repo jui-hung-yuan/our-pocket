@@ -1,4 +1,4 @@
-.PHONY: check lint typecheck guard boundaries migrations test fmt hooks db migrate reset-db synthetic demo
+.PHONY: check lint typecheck guard boundaries migrations test fmt hooks db migrate reset-db synthetic demo app
 
 # Where `make migrations` and pytest run. Both drop and recreate tables here,
 # so this must never point at the database holding your real data.
@@ -36,7 +36,7 @@ fmt:
 	uv run ruff format .
 	uv run ruff check --fix .
 
-hooks:  ## install the pre-commit guard into .git/hooks
+hooks:  ## install the pre-commit guard and commit-message check into .git/hooks
 	uv run pre-commit install
 
 db:  ## start Postgres (app db `pocket` + `pocket_test`)
@@ -50,6 +50,9 @@ reset-db:  ## DELETE everything in the app database `pocket`, then migrate (re-i
 	docker compose exec -T db psql -U pocket -d pocket -v ON_ERROR_STOP=1 \
 		-c "DROP SCHEMA IF EXISTS raw, staging, core CASCADE" -c "DROP TABLE IF EXISTS alembic_version"
 	uv run alembic upgrade head
+
+app:  ## the browser app on http://localhost:8501: balances and the review of staged batches
+	uv run streamlit run src/our_pocket/interfaces/web/app.py
 
 synthetic:  ## regenerate every committed file under data/synthetic/
 	uv run our-pocket synth fixtures

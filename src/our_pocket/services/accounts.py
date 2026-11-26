@@ -65,6 +65,11 @@ class AccountService:
         ).scalar_one()
         return Account(account_id, name, institution, household_id, export_account_name)
 
+    def list_accounts(self) -> list[Account]:
+        return [
+            Account(*row) for row in self.conn.execute(_ACCOUNT_COLUMNS.order_by(account.c.name))
+        ]
+
     def get(self, name: str) -> Account:
         row = self.conn.execute(_ACCOUNT_COLUMNS.where(account.c.name == name)).one_or_none()
         if row is None:

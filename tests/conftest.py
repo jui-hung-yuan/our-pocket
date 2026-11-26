@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -70,3 +71,26 @@ def conn(engine):
 @pytest.fixture
 def tr_account(conn) -> Account:
     return AccountService(conn).add("TR Depot", "trade_republic", owner="Alex")
+
+
+class SharedConnection:
+    """Stands in for the engine of code that opens its own connections (the CLI, the app):
+    every one is the test's connection, rolled back afterwards. A transaction is a
+    savepoint, so a failing command undoes its own writes, as against the real database."""
+
+    def __init__(self, conn) -> None:
+        self.conn = conn
+
+    @contextmanager
+    def begin(self):
+        with self.conn.begin_nested():
+            yield self.conn
+
+    @contextmanager
+    def connect(self):
+        yield self.conn
+
+
+@pytest.fixture
+def shared_connection(conn) -> SharedConnection:
+    return SharedConnection(conn)

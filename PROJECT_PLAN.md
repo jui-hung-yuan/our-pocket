@@ -26,8 +26,8 @@ P3 (categorisation), P4 (subscription detection) and P5 (household Q&A agent) co
 2. N26 CSV → ledger, one account per space ✅
 3. Flag moves between N26 spaces (P2); legs aren't paired ([D-021](docs/decisions.md#d-021-flag-moves-between-n26-spaces-dont-pair-transfer-legs)) ✅
 4. Eval suites on synthetic data ✅; real-data reconciliation ✅, first run on own exports matched (§6)
-5. One chart: cash + positions over time (at cost or at reported valuations; daily prices are V2)
-6. A review step for flagged batches (CLI now; maybe one Streamlit page)
+5. One chart: cash + positions over time, positions at cost ([D-031](docs/decisions.md#d-031-positions-in-the-chart-are-valued-at-cost-by-average-cost); daily prices are V2) ✅
+6. A review step for flagged batches: CLI, and the Review page ✅ (both in one local Streamlit app, `make app`, [D-032](docs/decisions.md#d-032-one-local-streamlit-app-for-balances-and-review-no-stored-aggregates-fastapi-later))
 7. README with the eval results and the 60-second pitch
 
 **Won't do in V1**
@@ -154,7 +154,7 @@ would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconc
 - **Circularity caveat:** the generator encodes my reading of the format. Real-data reconciliation is
   the check on that reading. It already caught one mistake: the generator put tax-only rows' money
   in `amount` (D-016). `STOCKPERK` is where my reading is still unproven.
-- **CI:** `make check` on every push: lint, mypy, real-data guard, layer boundaries, migration
+- **CI:** `make check` on every PR and on `main`: lint, mypy, real-data guard, layer boundaries, migration
   round trip, and all suites on synthetic data (`REQUIRE_DB=1`, so DB tests can't silently skip).
   Real-data runs and their results stay local. See [docs/checks.md](docs/checks.md).
 
@@ -164,7 +164,7 @@ would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconc
 |---|---|---|
 | **V1: Trustworthy ledger** | §2 | Cash + positions chart from real data, reconciled to the broker |
 | **V2: Categorise and value** | Categorisation (classical baseline vs LLM on low-confidence rows, cost per 1,000 rows); daily prices; comdirect CSV; PDF/LLM extraction reconsidered with the CSV parser as ground truth | Benchmark table: when GenAI beats rules |
-| **V3: Household + agent** | Row-level security; read-only MCP/SQL tools; Q&A eval; subscriptions | "What did we spend on subscriptions in Q3?" |
+| **V3: Household + agent** | Row-level security; read-only MCP/SQL tools; a FastAPI service over the services once a second client (the agent) needs them ([D-032](docs/decisions.md#d-032-one-local-streamlit-app-for-balances-and-review-no-stored-aggregates-fastapi-later)); Q&A eval; subscriptions | "What did we spend on subscriptions in Q3?" |
 
 **V3 prerequisites and shape:**
 
@@ -180,7 +180,7 @@ would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconc
 
 | # | Question | Status |
 |---|---|---|
-| Q1 | Cash meaning of `EARNINGS`, `PRE_DETERMINED_TAX_BASE`, `TAX_OPTIMIZATION`, `STOCKPERK` (and N26 `Authorization`): is `amount` cash, or only `tax`? Settle by reconciling against the app's cash balance | answered for the three tax types: `amount` is 0, `tax` is cash ([D-016](docs/decisions.md#d-016-tax-only-rows-move-cash-through-tax-parser-v2)); `STOCKPERK` open; also N26 `Authorization` ([D-030](docs/decisions.md#d-030-n26-authorization-is-typed-by-sign-its-cash-meaning-unverified-n26-parser-3)) |
+| Q1 | Cash meaning of `EARNINGS`, `PRE_DETERMINED_TAX_BASE`, `TAX_OPTIMIZATION`, `STOCKPERK` (and N26 `Authorization`): is `amount` cash, or only `tax`? Settle by reconciling against the app's cash balance | answered for the three tax types: `amount` is 0, `tax` is cash ([D-016](docs/decisions.md#d-016-tax-only-rows-move-cash-through-tax-parser-v2)); `STOCKPERK` open; N26 `Authorization` is cash ([D-034](docs/decisions.md#d-034-n26-authorization-is-cash-n26-parser-4)) |
 | Q2 | Is `TRANSFER_INBOUND` vs `CUSTOMER_INBOUND` meaningful for transfer matching (P2)? | moot: legs aren't paired ([D-021](docs/decisions.md#d-021-flag-moves-between-n26-spaces-dont-pair-transfer-legs)) |
 | Q3 | Do Trade Republic exports overlap between months, or is each a clean partition? (The pipeline handles both) | open |
 | Q4 | N26 export: one file per account/space, all with the same header? | answered: same header; mostly one file per space, but a file can include rows of a deleted space; files are imported per space and `Account Name` is checked ([D-022](docs/decisions.md#d-022-n26-imports-name-their-account-account-name-is-only-checked)) |

@@ -362,5 +362,48 @@ counting it as cash.
 **Why:** a real Main export holds one, from 2023: a positive card authorization that never became
 a `Presentment`, with no other row from that partner. Whether N26 counted it in the balance
 can't be read from the file. Reconciling the account against the app's balance settles it:
-`reconcile` reports whether counting it closes a gap (Q1).
+`reconcile` reports whether counting it closes a gap (Q1). **Settled by D-034.**
 
+### D-031: Positions in the chart are valued at cost, by average cost
+*2026-11-25*
+
+**Chose:** what the shares still held cost: a buy adds the cash it took, fees included; a sale
+removes the average cost of the shares sold, per account and ISIN. A sale larger than the
+holding stops the chart (`MissingBuys`) instead of guessing.
+**Over:** the last trade price seen in the export, and FIFO.
+**Why:** cost is exact and checkable against the export; a last trade price can be months old
+for a stock bought once. FIFO is what German tax uses, but it only changes which cost a sale
+removes, not the picture, and the tax view isn't V1. Market value needs daily prices (V2).
+
+### D-032: One local Streamlit app for balances and review; no stored aggregates, FastAPI later
+*2026-11-25*
+
+**Chose:** `make app`, a Streamlit app with two pages that call the services directly: Balances
+(total, cash and positions at cost over time for all accounts, one institution or one account,
+and the accounts side by side) and Review (a staged batch's flags, then commit or reject under
+the CLI's rules). It serves on localhost only. History is computed from the ledger on each
+request and cached by Streamlit until the next commit (`last_entry_id` is the cache key).
+**Over:** a static HTML chart from the CLI (no way to switch views); FastAPI (an API, still
+needing a frontend: it earns its place when another program reads the data, like the V3 agent);
+a stored layer of daily balances (it would go stale after every import and repeat the logic).
+**Why:** one app covers V1 items 5 and 6. Computing history takes milliseconds at this size;
+revisit stored aggregates when it doesn't, or when a tool other than this code reads the database.
+
+### D-033: Conventional Commits and one pull request template
+*2026-11-26*
+
+**Chose:** commit headers as `type(scope): description`, checked by a local commit-msg hook;
+a body for why and a footer for `Refs: D-NNN`; one PR template; "Rebase and merge".
+**Over:** free-form messages, as in most earlier commits, and squash merges.
+**Why:** the history is read back to study and review changes: a type and scope make `git log`
+filterable (`git log --grep '^fix(n26)'`), and rebase merging keeps each commit on `main`. A
+local hook needs no dependency; the earlier commits stay as they are.
+
+### D-034: N26 `Authorization` is cash (N26 parser 4)
+*2026-11-26*
+
+**Chose:** count an `Authorization` row's amount as cash, with no flag; the type still comes
+from the sign (D-030). **Over:** keeping `cash_effect` NULL.
+**Why:** reconciling Main against the app, the app's balance was higher than the ledger by
+exactly the one positive `Authorization` row, so N26 counted it. An account imported with
+parser 3 is reset and imported again (D-027).

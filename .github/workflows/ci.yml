@@ -1,8 +1,9 @@
 name: CI
 
 on:
-  push:          # every push, every branch
-  pull_request:
+  push:
+    branches: [main]   # after merge
+  pull_request:        # every PR, before merge
 
 jobs:
   check:

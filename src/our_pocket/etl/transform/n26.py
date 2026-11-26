@@ -12,8 +12,8 @@ Conventions observed in real exports (see docs/decisions.md, D-019 to D-023):
 - Dates only, no time. `Amount (EUR)` is signed. The FX columns are filled only on card
   rows: `Original Amount` is unsigned and |amount| = original x rate.
 - `Authorization` is a card hold that never became a `Presentment` (seen once, positive). Its
-  sign gives the type, like MoneyBeam's; whether it moved cash is unverified, so its
-  cash_effect stays empty with a warning until a reconciliation settles it (D-030).
+  sign gives the type, like MoneyBeam's, and it is cash: a reconciliation showed N26 counts
+  it in the balance (D-030, D-034).
 - A transfer without a partner IBAN is a move between N26 spaces, and its partner name is
   the other space's name. That space can belong to another member of a shared space, so
   the name doesn't say whose it is.
@@ -62,8 +62,6 @@ SIGNED_TYPES: dict[str, tuple[str, str]] = {  # source type: (entry type if < 0,
     MONEYBEAM: ("transfer_out", "transfer_in"),
     AUTHORIZATION: ("card_payment", "card_refund"),
 }
-# Types whose amount may not be cash that moved (D-030): cash_effect stays NULL until verified.
-UNVERIFIED_CASH_TYPES = frozenset({AUTHORIZATION})
 # Transfers without a partner IBAN move money between N26 spaces.
 SPACE_TRANSFER: dict[str, str] = {
     "transfer_in": "space_transfer_in",
@@ -97,7 +95,7 @@ class N26V1(Transformer):
     institution = "n26"
     schema_name = "transactions_csv"
     schema_version = 1
-    parser_version = "3"
+    parser_version = "4"
     columns = COLUMNS_V1
     account_column = "account name"
 
@@ -180,14 +178,6 @@ class N26V1(Transformer):
             row.amount, row.fee = Decimal(0), money
         elif row.entry_type == "tax":
             row.amount, row.tax = Decimal(0), money
-        if row.source_type in UNVERIFIED_CASH_TYPES:
-            row.flag(
-                "cash_semantics_unverified",
-                "warning",
-                f"cash meaning of {row.source_type} is unverified; cash_effect left empty",
-                "amount (eur)",
-            )
-            return
         row.cash_effect = row.amount + row.fee + row.tax
 
     @staticmethod

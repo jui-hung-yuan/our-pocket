@@ -170,11 +170,10 @@ def test_zero_amount_has_no_sign_flag():
 @pytest.mark.parametrize(
     "amount, entry_type", [("25.00", "card_refund"), ("-25.00", "card_payment")]
 )
-def test_authorization_is_typed_by_sign_with_its_cash_meaning_unverified(amount, entry_type):
-    """A hold that never became a Presentment (D-030): typed, kept, but not counted as cash
-    until a reconciliation against the app's balance settles it."""
+def test_authorization_is_typed_by_sign_and_counted_as_cash(amount, entry_type):
+    """A hold that never became a Presentment (D-030). Reconciling a real account showed N26
+    counts it in the balance (D-034), so it is cash like any card row, with no flag."""
     row = _parse(_row(type="Authorization", **{"amount (eur)": amount, "original amount": "25"}))
     assert row.entry_type == entry_type
-    assert row.amount == Decimal(amount)
-    assert row.cash_effect is None
-    assert _codes(row) == {("warning", "cash_semantics_unverified")}
+    assert row.amount == row.cash_effect == Decimal(amount)
+    assert _codes(row) == set()
