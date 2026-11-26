@@ -85,11 +85,9 @@ def test_trade_republic_fields_match_the_export(trade_republic):
         assert row.booked_at is not None and row.booked_at.utcoffset() is not None
 
 
-def test_trade_republic_only_flags_unverified_cash(trade_republic):
-    """The one expected flag on clean data: STOCKPERK's cash meaning is still open (Q1)."""
+def test_trade_republic_clean_data_has_no_flags(trade_republic):
     parsed = _read(trade_republic.to_csv_bytes())
-    flags = {(row.source_type, f.severity, f.code) for row in parsed for f in row.flags}
-    assert flags <= {("STOCKPERK", "warning", "cash_semantics_unverified")}
+    assert [(row.source_type, f.code) for row in parsed for f in row.flags] == []
 
 
 def test_trade_republic_positions_and_cash_match_the_generator(trade_republic):
@@ -143,13 +141,12 @@ def test_n26_space_transfers_are_exactly_the_planted_moves(n26):
 def test_trade_republic_ledger_matches_the_generator(conn, trade_republic):
     tr_account = AccountService(conn).add("TR Depot", "trade_republic", owner="Alex")
     batch_id = ImportPipeline(conn).run(trade_republic.to_csv_bytes(), "tr.csv", tr_account)
-    BatchStore(conn).commit(batch_id, accept_warnings=True)
+    BatchStore(conn).commit(batch_id)
 
     ledger = LedgerService(conn)
     assert ledger.positions(tr_account.name) == trade_republic.holdings
     cash = ledger.cash_balance(tr_account.name)
-    assert cash.known == trade_republic.cash
-    assert cash.unverified_entries == trade_republic.type_counts["STOCKPERK"]
+    assert (cash.known, cash.unverified_entries) == (trade_republic.cash, 0)
 
 
 @pytest.mark.db

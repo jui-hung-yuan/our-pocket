@@ -37,7 +37,9 @@ def test_nothing_staged(app_database):
     assert "Nothing to review" in page.info[0].value
 
 
-def test_warnings_must_be_accepted_before_commit(app_database, tr_account, synthetic):
+def test_warnings_must_be_accepted_before_commit(
+    app_database, tr_account, synthetic, stockperk_unverified
+):
     batch_id = _stage(app_database, tr_account, synthetic)  # STOCKPERK: one warning
     page = AppTest.from_function(_page, default_timeout=10).run()
     assert {m.label: m.value for m in page.metric} == {
@@ -57,7 +59,9 @@ def test_warnings_must_be_accepted_before_commit(app_database, tr_account, synth
     assert "Nothing to review" in page.info[0].value
 
 
-def test_each_flag_shows_the_raw_fields_of_its_line(app_database, tr_account, synthetic):
+def test_each_flag_shows_the_raw_fields_of_its_line(
+    app_database, tr_account, synthetic, stockperk_unverified
+):
     _stage(app_database, tr_account, synthetic)  # STOCKPERK: one warning
     page = AppTest.from_function(_page, default_timeout=10).run()
     [flag] = page.dataframe[1].value.to_dict("records")

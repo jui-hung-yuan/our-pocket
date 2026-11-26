@@ -7,7 +7,6 @@ from our_pocket.etl.models import RawRow
 from our_pocket.etl.transform.trade_republic import (
     BERLIN,
     TYPE_MAP,
-    UNVERIFIED_CASH_TYPES,
     TradeRepublicV1,
 )
 from our_pocket.synthetic.trade_republic import BOOKED_A_DAY_EARLY
@@ -33,8 +32,7 @@ def _codes(row) -> set[tuple[str, str]]:
 def test_synthetic_export_has_no_errors(synthetic):
     parsed = PARSER.transform(_raw(synthetic))
     flags = Counter((f.severity, f.code) for p in parsed for f in p.flags)
-    unverified = sum(synthetic.type_counts[t] for t in UNVERIFIED_CASH_TYPES)
-    assert flags == Counter({("warning", "cash_semantics_unverified"): unverified})
+    assert flags == Counter()
 
 
 def test_every_row_gets_a_normalised_type(synthetic):
@@ -89,7 +87,14 @@ def test_tax_only_rows_move_cash_through_tax(synthetic, tr_type, entry_type, tax
     assert row.flags == []
 
 
-def test_unverified_types_have_no_cash_effect(synthetic):
+def test_a_stock_perk_is_cash(synthetic):
+    row = PARSER.transform([RawRow(2, _first(synthetic, "STOCKPERK"))])[0]
+    assert row.entry_type == "bonus"
+    assert row.cash_effect == row.amount > 0
+    assert row.flags == []
+
+
+def test_unverified_types_have_no_cash_effect(synthetic, stockperk_unverified):
     row = PARSER.transform([RawRow(2, _first(synthetic, "STOCKPERK"))])[0]
     assert row.entry_type == "bonus"
     assert row.cash_effect is None

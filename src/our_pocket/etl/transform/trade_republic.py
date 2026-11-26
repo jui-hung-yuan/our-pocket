@@ -10,6 +10,7 @@ Conventions observed in real exports (see docs/decisions.md, D-007):
   `datetime`, but can be a few days earlier, never later (D-028).
 - Tax-only rows (TAX_OPTIMIZATION, EARNINGS, PRE_DETERMINED_TAX_BASE) have amount 0 and
   carry the money in `tax` (D-016).
+- STOCKPERK credits its amount as cash (D-035).
 """
 
 from datetime import timedelta
@@ -67,8 +68,8 @@ TYPE_MAP: dict[str, str] = {
 TAX_ONLY_TYPES = frozenset({"TAX_OPTIMIZATION", "EARNINGS", "PRE_DETERMINED_TAX_BASE"})
 
 # Types whose `amount` may not be cash that moved. Their cash_effect stays NULL until
-# verified against an account balance.
-UNVERIFIED_CASH_TYPES = frozenset({"STOCKPERK"})
+# verified against an account balance. None left: STOCKPERK was, until it proved cash (D-035).
+UNVERIFIED_CASH_TYPES: frozenset[str] = frozenset()
 
 KNOWN_ACCOUNT_TYPES = frozenset({"DEFAULT"})
 
@@ -105,7 +106,7 @@ class TradeRepublicV1(Transformer):
     institution = "trade_republic"
     schema_name = "transactions_csv"
     schema_version = 1
-    parser_version = "3"
+    parser_version = "4"
     columns = COLUMNS_V1
 
     def transform_row(self, raw: RawRow) -> ParsedRow:

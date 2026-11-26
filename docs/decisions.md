@@ -80,7 +80,7 @@ Profiled on a real export (only column shapes were looked at):
 (Vorabpauschale bases), `TAX_OPTIMIZATION` and `STOCKPERK`, `amount` doesn't obviously relate to
 `tax`, so `cash_effect` is left NULL with a `cash_semantics_unverified` warning, instead of guessed.
 Open question Q1: settle by reconciling against the app's cash balance. *Superseded for the three
-tax types by D-016; `STOCKPERK` is still open.*
+tax types by D-016, and for `STOCKPERK` by D-035.*
 
 ### D-008: Deduplicate by file hash and by (account, external id)
 *2026-11-19*
@@ -174,7 +174,8 @@ version 2; schema version unchanged (the file format didn't change, only its rea
 **Over:** keeping them NULL until a cash-balance reconciliation. That dropped every tax refund
 from the ledger, so net tax came out wrong.
 
-**Still open:** `STOCKPERK` (amount > 0, no shares, no tax) stays `cash_semantics_unverified`. The
+**Still open:** `STOCKPERK` (amount > 0, no shares, no tax) stays `cash_semantics_unverified`
+(settled by D-035). The
 synthetic generator previously put the money in `amount` for these types; it now matches the real
 shape, which is the circularity caveat in the eval plan in action.
 
@@ -409,3 +410,13 @@ from the sign (D-030). **Over:** keeping `cash_effect` NULL.
 **Why:** reconciling Main against the app, the app's balance was higher than the ledger by
 exactly the one positive `Authorization` row, so N26 counted it. An account imported with
 parser 3 is reset and imported again (D-027).
+
+### D-035: Trade Republic `STOCKPERK` is cash (TR parser 4)
+*2026-11-26*
+
+**Chose:** count a `STOCKPERK` row's amount as cash, with no flag. `UNVERIFIED_CASH_TYPES` stays,
+empty, for the next type whose cash meaning can't be read from the export.
+**Over:** keeping `cash_effect` NULL; removing the rule with its last type.
+**Why:** reconciling against the app, the ledger's cash was lower by exactly the one `STOCKPERK`
+row's amount. That answers Q1 for every type it named. An account imported with parser 3 is
+reset and imported again (D-027).
