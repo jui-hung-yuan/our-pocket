@@ -3,10 +3,26 @@
 A household ledger built from German bank and broker CSV exports. No number reaches the ledger
 unvalidated, and every number traces back to its file and line.
 
-Status: V1 in progress. Trade Republic and N26 CSV → ledger work end to end: moves between N26
-spaces flagged, synthetic eval suites in `make check`, reconciliation against the apps' own
-numbers ([PROJECT_PLAN §6](PROJECT_PLAN.md#6-evaluation-plan)), and a local app for balances over
-time and reviewing imports.
+Every bank exports its own CSV, and a quiet change to one breaks whatever was built on it.
+our-pocket reads Trade Republic and N26 exports into one Postgres ledger: an unknown format is
+refused, an odd row is flagged for review, and the result is checked against the apps' own
+balances. A local app shows cash and positions over time and the review of each import.
+
+Status: V1 done. Next: categorisation and daily prices (V2).
+
+## Results
+
+On synthetic data, in every `make check`
+([PROJECT_PLAN §6](PROJECT_PLAN.md#6-evaluation-plan)):
+
+- **Field accuracy:** every parsed field equals what the generator wrote, on five seeds.
+- **Planted errors:** over 50 broken rows (wrong sign, bad check digit, sums that don't add
+  up…), each flagged, and nothing else flagged.
+- **Format changes:** a renamed, added, dropped or moved column is refused, with the change named.
+
+On my own exports: cash and positions match the apps to the cent. Getting there found three
+rows I had read wrong, while every test passed, because the generator shared my reading. That
+is why real data gets reconciled.
 Plan: [PROJECT_PLAN.md](PROJECT_PLAN.md) · decisions: [docs/decisions.md](docs/decisions.md).
 
 ## How an import works
@@ -30,7 +46,7 @@ Requires [uv](https://docs.astral.sh/uv/) and Docker.
 ```bash
 uv sync
 make db          # Postgres 17: databases pocket and pocket_test
-make hooks       # pre-commit guard against committing real exports
+make hooks       # git hooks: real-data guard, commit-message check
 make migrate
 make demo        # account "TR Demo" + synthetic Trade Republic import
 uv run our-pocket batch show 1
@@ -62,7 +78,7 @@ the tests. CI runs the same command. Details: [docs/checks.md](docs/checks.md).
 src/our_pocket/
   etl/          extract/ → registry → transform/ → load/, wired by ImportPipeline
   services/     AccountService, LedgerService: the API interfaces call
-  interfaces/   cli.py
+  interfaces/   cli.py, web/ (the Streamlit app)
   db/           schema.py: all tables
   synthetic/    seeded generators, one per export format
 migrations/     Alembic

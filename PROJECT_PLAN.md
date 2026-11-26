@@ -28,7 +28,7 @@ P3 (categorisation), P4 (subscription detection) and P5 (household Q&A agent) co
 4. Eval suites on synthetic data ✅; real-data reconciliation ✅, first run on own exports matched (§6)
 5. One chart: cash + positions over time, positions at cost ([D-031](docs/decisions.md#d-031-positions-in-the-chart-are-valued-at-cost-by-average-cost); daily prices are V2) ✅
 6. A review step for flagged batches: CLI, and the Review page ✅ (both in one local Streamlit app, `make app`, [D-032](docs/decisions.md#d-032-one-local-streamlit-app-for-balances-and-review-no-stored-aggregates-fastapi-later))
-7. README with the eval results and the 60-second pitch
+7. README with the eval results and the 60-second pitch ✅
 
 **Won't do in V1**
 
