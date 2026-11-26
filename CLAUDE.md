@@ -25,4 +25,5 @@
 
 ## Before committing
 - `make check` passes.
+- Commit messages and PR descriptions follow [docs/checks.md](docs/checks.md#commit-messages-and-pull-requests).
 - A feature branch gets an independent review before merge.

@@ -388,3 +388,13 @@ needing a frontend: it earns its place when another program reads the data, like
 a stored layer of daily balances (it would go stale after every import and repeat the logic).
 **Why:** one app covers V1 items 5 and 6. Computing history takes milliseconds at this size;
 revisit stored aggregates when it doesn't, or when a tool other than this code reads the database.
+
+### D-033: Conventional Commits and one pull request template
+*2026-11-26*
+
+**Chose:** commit headers as `type(scope): description`, checked by a local commit-msg hook;
+a body for why and a footer for `Refs: D-NNN`; one PR template; "Rebase and merge".
+**Over:** free-form messages, as in most earlier commits, and squash merges.
+**Why:** the history is read back to study and review changes: a type and scope make `git log`
+filterable (`git log --grep '^fix(n26)'`), and rebase merging keeps each commit on `main`. A
+local hook needs no dependency; the earlier commits stay as they are.

@@ -36,7 +36,7 @@ fmt:
 	uv run ruff format .
 	uv run ruff check --fix .
 
-hooks:  ## install the pre-commit guard into .git/hooks
+hooks:  ## install the pre-commit guard and commit-message check into .git/hooks
 	uv run pre-commit install
 
 db:  ## start Postgres (app db `pocket` + `pocket_test`)
