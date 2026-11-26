@@ -1,7 +1,7 @@
 # Checks
 
-One command runs everything: **`make check`**. GitHub Actions runs the same command on every push
-to any branch and on every pull request (`.github/workflows/ci.yml`), against a real Postgres 17.
+One command runs everything: **`make check`**. GitHub Actions runs the same command on every pull
+request and on every push to `main` (`.github/workflows/ci.yml`), against a real Postgres 17.
 A pre-commit hook adds a local guard so real financial data is stopped before it reaches git.
 
 ```bash

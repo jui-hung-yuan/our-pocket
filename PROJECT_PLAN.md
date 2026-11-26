@@ -154,7 +154,7 @@ would close a cash gap, which settles Q1 ([D-026](docs/decisions.md#d-026-reconc
 - **Circularity caveat:** the generator encodes my reading of the format. Real-data reconciliation is
   the check on that reading. It already caught one mistake: the generator put tax-only rows' money
   in `amount` (D-016). `STOCKPERK` is where my reading is still unproven.
-- **CI:** `make check` on every push: lint, mypy, real-data guard, layer boundaries, migration
+- **CI:** `make check` on every PR and on `main`: lint, mypy, real-data guard, layer boundaries, migration
   round trip, and all suites on synthetic data (`REQUIRE_DB=1`, so DB tests can't silently skip).
   Real-data runs and their results stay local. See [docs/checks.md](docs/checks.md).
 
