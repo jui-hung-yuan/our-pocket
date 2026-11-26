@@ -393,11 +393,13 @@ revisit stored aggregates when it doesn't, or when a tool other than this code r
 *2026-11-26*
 
 **Chose:** commit headers as `type(scope): description`, checked by a local commit-msg hook;
-a body for why and a footer for `Refs: D-NNN`; one PR template; "Rebase and merge".
-**Over:** free-form messages, as in most earlier commits, and squash merges.
+a body for why and a footer for `Refs: D-NNN`; one PR template; "Squash and merge", with the
+PR title in the same form, since it becomes the commit on `main`.
+**Over:** free-form messages, as in most earlier commits, and rebase merging (every commit of
+a PR on `main`).
 **Why:** the history is read back to study and review changes: a type and scope make `git log`
-filterable (`git log --grep '^fix(n26)'`), and rebase merging keeps each commit on `main`. A
-local hook needs no dependency; the earlier commits stay as they are.
+filterable (`git log --grep '^fix(n26)'`), and one commit per PR keeps `main` short while the
+PR page keeps its commits. A local hook needs no dependency; the earlier commits stay as they are.
 
 ### D-034: N26 `Authorization` is cash (N26 parser 4)
 *2026-11-26*

@@ -13,8 +13,4 @@
 - [ ] `make check` passes
 - [ ] Docs describing the changed code are updated
 - [ ] No real names, amounts or export file names (see CLAUDE.md, Privacy)
-
-## Commits
-
-<!-- One line per commit, if it helps reading them in order. Merge with "Rebase and merge"
-     so each commit stays in main's history. -->
+- [ ] The title reads `type(scope): description`: "Squash and merge" makes it the commit on main

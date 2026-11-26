@@ -81,8 +81,9 @@ Co-Authored-By: ...
   `ci`. Leave it out only when a change has no single area.
 - **body:** why, wrapped at 72. **Footer:** `Refs: D-NNN`, `BREAKING CHANGE: ...`, co-authors.
 
-A pull request starts from `.github/pull_request_template.md`. Merge with "Rebase and merge" so
-each commit stays in `main`'s history.
+A pull request starts from `.github/pull_request_template.md` and is merged with "Squash and
+merge": its title becomes the one commit on `main`, so it follows the same form. The hook
+can't check that commit, since GitHub writes it.
 
 ## Type checking scope
 
