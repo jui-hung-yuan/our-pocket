@@ -9,6 +9,7 @@ from streamlit.testing.v1 import AppTest
 from our_pocket.etl.load import BatchStore
 from our_pocket.etl.pipeline import ImportPipeline
 from our_pocket.interfaces.web.balances import (
+    balance_chart,
     balance_series,
     chart_records,
     label_asset_class,
@@ -102,6 +103,22 @@ def test_metrics_keep_a_class_sold_out_in_the_period_and_drop_one_never_held():
         ("Stocks", Decimal(0), Decimal(7)),  # sold out in the period
         ("ETFs", Decimal(4), Decimal(0)),  # bought in the period
     ]  # Bond: sold out before the period, not shown
+
+
+def test_the_total_is_its_own_line_over_the_stack():
+    """With cash below zero the stack's top edge isn't the total, so the total is drawn."""
+    points = [HistoryPoint(date(2025, 1, 1), Decimal(-200), {"STOCK": Decimal(600)})]
+    series = balance_series(points)
+    total = {"Total": [(p.day, p.total) for p in points]}
+    spec = balance_chart(
+        chart_records(series, date(2025, 1, 1), date(2025, 1, 31)),
+        list(series),
+        chart_records(total, date(2025, 1, 1), date(2025, 1, 31)),
+    ).to_dict()
+    marks = [layer["mark"]["type"] for layer in spec["layer"]]
+    assert marks == ["area", "line"]
+    line_values = spec["layer"][1]["data"]["values"]
+    assert {(v["series"], v["euros"]) for v in line_values} == {("Total", 400.0)}
 
 
 # --- the page ----------------------------------------------------------------------------

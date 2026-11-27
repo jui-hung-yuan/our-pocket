@@ -22,6 +22,7 @@ ASSET_CLASS_ORDER = ("STOCK", "FUND")
 SERIES_COLOURS = {"Cash": "#1f77b4", "Stocks": "#ff7f0e", "ETFs": "#2ca02c"}
 OTHER_COLOURS = ("#9467bd", "#8c564b", "#e377c2", "#bcbd22", "#17becf")
 UNCLASSIFIED_COLOUR = "#7f7f7f"
+TOTAL_COLOUR = "#4c4c4c"
 
 
 @dataclass(frozen=True)
@@ -124,23 +125,33 @@ def _colours(names: Sequence[str]) -> list[str]:
     ]
 
 
-def _stacked_chart(records: list[dict[str, Any]], names: Sequence[str]) -> alt.Chart:
-    """The series stacked in `names` order, so the top edge is their sum."""
+def balance_chart(
+    records: list[dict[str, Any]], names: Sequence[str], total_records: list[dict[str, Any]]
+) -> alt.LayerChart:
+    """The series stacked in `names` order, with the total as a line over them: with cash
+    below zero, the stack's top edge is not the total."""
     ranked = [r | {"rank": names.index(r["series"])} for r in records]
-    data = alt.Data(values=ranked)  # type: ignore[no-untyped-call]  # altair leaves it untyped
+    areas = alt.Data(values=ranked)  # type: ignore[no-untyped-call]  # altair leaves it untyped
+    totals = alt.Data(values=total_records)  # type: ignore[no-untyped-call]
     scale = alt.Scale(domain=list(names), range=_colours(names))
-    chart: alt.Chart = (
-        alt.Chart(data)
+    x = alt.X("day:T", title=None)
+    stack = (
+        alt.Chart(areas)
         .mark_area(interpolate="step-after")
         .encode(
-            x=alt.X("day:T", title=None),
+            x=x,
             y=alt.Y("euros:Q", title="EUR", stack="zero"),
             color=alt.Color("series:N", title=None, sort=list(names), scale=scale),
             order=alt.Order("rank:Q"),
             tooltip=_tooltip(),
         )
     )
-    return chart
+    total = (
+        alt.Chart(totals)
+        .mark_line(interpolate="step-after", color=TOTAL_COLOUR)
+        .encode(x=x, y=alt.Y("euros:Q"), tooltip=_tooltip())
+    )
+    return alt.LayerChart(layer=[stack, total])
 
 
 def _euros(value: Decimal) -> str:
@@ -183,12 +194,15 @@ def render() -> None:
     for column, (label, now, before) in zip(st.columns(len(metrics)), metrics, strict=True):
         column.metric(label, _euros(now), delta=_euros(now - before), border=True)
     st.caption(
-        f"As of {end}; change since {start}. The stack's top edge is the total. Positions at "
+        f"As of {end}; change since {start}. The dark line is the total. Positions at "
         "cost: average cost, fees included (market value needs daily prices). Cash leaves out "
         "entries whose cash meaning is unverified."
     )
-    records = chart_records(series, start, end)
-    st.altair_chart(_stacked_chart(records, list(series)), width="stretch")
+    total = {"Total": [(p.day, p.total) for p in points]}
+    chart = balance_chart(
+        chart_records(series, start, end), list(series), chart_records(total, start, end)
+    )
+    st.altair_chart(chart, width="stretch")
 
     members = [a for a in accounts if scope.institution in (None, a.institution)]
     if scope.account_name is not None or len(members) < 2:
