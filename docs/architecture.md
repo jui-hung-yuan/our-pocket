@@ -308,7 +308,7 @@ Row-level security in Postgres then limits each household member to their own ro
 | `etl/load/batch_store.py` | `BatchStore`: stage / commit / reject / report |
 | `etl/pipeline.py` | `ImportPipeline`: extract → identify → transform → check the account → stage |
 | `services/accounts.py` | `AccountService`: create and look up accounts |
-| `services/ledger.py` | `LedgerService`: read-only queries over the ledger, incl. `history()` for the chart |
+| `services/ledger.py` | `LedgerService`: read-only queries over the ledger, incl. `history()` for the chart: cash and positions at cost per asset class |
 | `services/cost_basis.py` | `CostBasis`: average cost of the shares still held (D-031) |
 | `services/reconciliation.py` | `ReconciliationService`: the ledger against a typed app snapshot (D-026) |
 | `interfaces/cli.py` | `our-pocket` command line |

@@ -163,7 +163,7 @@ meaning as cash would close a cash gap: that settled Q1 ([D-026](docs/decisions.
 | Version | Scope | Payoff |
 |---|---|---|
 | **V1: Trustworthy ledger** | §2 | Cash + positions chart from real data, reconciled to the broker |
-| **V2: Categorise and value** | Categorisation (classical baseline vs LLM on low-confidence rows, cost per 1,000 rows); daily prices; comdirect CSV; PDF/LLM extraction reconsidered with the CSV parser as ground truth | Benchmark table: when GenAI beats rules |
+| **V2: Categorise and value** | Asset split at cost ✅ ([D-036](docs/decisions.md#d-036-positions-are-split-by-the-exports-asset-class)); categorisation (classical baseline vs LLM on low-confidence rows, cost per 1,000 rows); daily prices; comdirect CSV; PDF/LLM extraction reconsidered with the CSV parser as ground truth | Benchmark table: when GenAI beats rules |
 | **V3: Household + agent** | Row-level security; read-only MCP/SQL tools; a FastAPI service over the services once a second client (the agent) needs them ([D-032](docs/decisions.md#d-032-one-local-streamlit-app-for-balances-and-review-no-stored-aggregates-fastapi-later)); Q&A eval; subscriptions | "What did we spend on subscriptions in Q3?" |
 
 **V3 prerequisites and shape:**
