@@ -12,9 +12,9 @@ from our_pocket.interfaces.web.balances import (
     balance_chart,
     balance_series,
     chart_records,
+    choose_metrics_to_show,
     label_asset_class,
     point_on,
-    select_metrics,
 )
 from our_pocket.services import AccountService, HistoryPoint, LedgerService
 from our_pocket.synthetic import n26 as synth_n26
@@ -98,7 +98,7 @@ def test_metrics_keep_a_class_sold_out_in_the_period_and_drop_one_never_held():
         "ETFs": [(date(2025, 1, 1), Decimal(0)), (date(2025, 9, 1), Decimal(4))],
         "Bond": [(date(2025, 1, 1), Decimal(3)), (date(2025, 2, 1), Decimal(0))],
     }
-    assert select_metrics(series, date(2025, 3, 1), date(2025, 12, 31)) == [
+    assert choose_metrics_to_show(series, date(2025, 3, 1), date(2025, 12, 31)) == [
         ("Cash", Decimal(0), Decimal(0)),  # always shown
         ("Stocks", Decimal(0), Decimal(7)),  # sold out in the period
         ("ETFs", Decimal(4), Decimal(0)),  # bought in the period

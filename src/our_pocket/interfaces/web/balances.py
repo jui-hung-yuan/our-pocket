@@ -60,7 +60,7 @@ def _value_on(values: Sequence[tuple[date, Decimal]], day: date) -> Decimal:
     return earlier[-1] if earlier else Decimal(0)
 
 
-def select_metrics(
+def choose_metrics_to_show(
     series: Mapping[str, Sequence[tuple[date, Decimal]]], start: date, end: date
 ) -> list[tuple[str, Decimal, Decimal]]:
     """(name, value on `end`, value on `start`) for Cash and each class held on either day,
@@ -190,7 +190,7 @@ def render() -> None:
     start = points[0].day if days is None else max(points[0].day, end - timedelta(days=days))
     latest, then = points[-1], point_on(points, start)
     series = balance_series(points)
-    metrics = [("Total", latest.total, then.total), *select_metrics(series, start, end)]
+    metrics = [("Total", latest.total, then.total), *choose_metrics_to_show(series, start, end)]
     for column, (label, now, before) in zip(st.columns(len(metrics)), metrics, strict=True):
         column.metric(label, _euros(now), delta=_euros(now - before), border=True)
     st.caption(
