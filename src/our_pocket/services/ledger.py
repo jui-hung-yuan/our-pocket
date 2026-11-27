@@ -4,6 +4,8 @@ This is the surface future agent tools will wrap: it only reads ledger_entry, ne
 the staging tables, so an agent can't see unreviewed data.
 """
 
+from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -28,11 +30,16 @@ class CashBalance:
 @dataclass(frozen=True)
 class HistoryPoint:
     """The end of one day with entries: cash from cash effects (unverified types left out,
-    as in CashBalance.known) and the positions held, at cost (D-031)."""
+    as in CashBalance.known) and the positions held, at cost (D-031), per asset class as the
+    export names it ("" for none, D-036). A class with nothing held is absent."""
 
     day: date
     cash: Decimal
-    positions_at_cost: Decimal
+    positions_by_asset_class: Mapping[str, Decimal]
+
+    @property
+    def positions_at_cost(self) -> Decimal:
+        return sum(self.positions_by_asset_class.values(), Decimal(0))
 
     @property
     def total(self) -> Decimal:
@@ -104,22 +111,33 @@ class LedgerService:
     ) -> list[HistoryPoint]:
         """Cash and positions at cost at the end of every day with entries, oldest first,
         for one account, one institution's accounts, or all of them. Raises MissingBuys if
-        a sale is larger than the holding before it."""
+        a sale is larger than the holding before it in its asset class."""
         le = ledger_entry.c
         stmt = select(
-            le.booking_date, le.account_id, le.entry_type, le.isin, le.quantity, le.cash_effect
+            le.booking_date,
+            le.account_id,
+            le.entry_type,
+            le.isin,
+            le.asset_class,
+            le.quantity,
+            le.cash_effect,
         ).order_by(le.booking_date, le.booked_at.nulls_first(), le.id)
         points: list[HistoryPoint] = []
         cash = Decimal(0)
-        cost = CostBasis()
+        costs: defaultdict[str, CostBasis] = defaultdict(CostBasis)
         for entry in self.conn.execute(self._for_account(stmt, account_name, institution)):
             cash += entry.cash_effect or 0
             holding = (entry.account_id, entry.isin)
             if entry.entry_type == "buy":
-                cost.buy(holding, entry.quantity, -entry.cash_effect)  # fees included
+                costs[entry.asset_class or ""].buy(
+                    holding,
+                    entry.quantity,
+                    -entry.cash_effect,  # fees included
+                )
             elif entry.entry_type == "sell":
-                cost.sell(holding, -entry.quantity, entry.booking_date)
-            point = HistoryPoint(entry.booking_date, cash, cost.total)
+                costs[entry.asset_class or ""].sell(holding, -entry.quantity, entry.booking_date)
+            by_class = {asset_class: c.total for asset_class, c in costs.items() if c.total}
+            point = HistoryPoint(entry.booking_date, cash, by_class)
             if points and points[-1].day == point.day:
                 points[-1] = point
             else:

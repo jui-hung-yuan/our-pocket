@@ -8,14 +8,21 @@ from streamlit.testing.v1 import AppTest
 
 from our_pocket.etl.load import BatchStore
 from our_pocket.etl.pipeline import ImportPipeline
-from our_pocket.interfaces.web.balances import chart_records, point_on
+from our_pocket.interfaces.web.balances import (
+    balance_chart,
+    balance_series,
+    chart_records,
+    choose_metrics_to_show,
+    label_asset_class,
+    point_on,
+)
 from our_pocket.services import AccountService, HistoryPoint, LedgerService
 from our_pocket.synthetic import n26 as synth_n26
 from our_pocket.synthetic.trade_republic import SyntheticExport
 
 POINTS = [
-    HistoryPoint(date(2025, 1, 15), Decimal("100"), Decimal("0")),
-    HistoryPoint(date(2025, 3, 2), Decimal("40"), Decimal("60")),
+    HistoryPoint(date(2025, 1, 15), Decimal("100"), {}),
+    HistoryPoint(date(2025, 3, 2), Decimal("40"), {"STOCK": Decimal("60")}),
 ]
 
 
@@ -47,6 +54,71 @@ def test_each_line_spans_the_whole_period():
         ("new", "2025-03-01", 5.0),
         ("new", "2025-04-30", 5.0),
     ]
+
+
+def test_a_change_on_the_last_day_is_one_record_not_two():
+    """Two records on one day would be counted twice where the chart stacks the series."""
+    records = chart_records(
+        {"cash": [(p.day, p.cash) for p in POINTS]}, POINTS[0].day, POINTS[-1].day
+    )
+    assert [(r["day"], r["euros"]) for r in records] == [
+        ("2025-01-15", 100.0),
+        ("2025-03-02", 40.0),
+    ]
+
+
+@pytest.mark.parametrize(
+    "asset_class, label",
+    [("STOCK", "Stocks"), ("FUND", "ETFs"), ("CRYPTO", "Crypto"), ("", "Unclassified")],
+)
+def test_asset_classes_get_readable_labels(asset_class, label):
+    assert label_asset_class(asset_class) == label
+
+
+def test_series_has_cash_then_each_class_seen_with_zero_when_absent():
+    points = [
+        HistoryPoint(date(2025, 1, 1), Decimal(10), {"FUND": Decimal(5), "": Decimal(1)}),
+        HistoryPoint(date(2025, 2, 1), Decimal(10), {"STOCK": Decimal(7), "BOND": Decimal(2)}),
+    ]
+    days = [date(2025, 1, 1), date(2025, 2, 1)]
+    assert balance_series(points) == {
+        "Cash": list(zip(days, [Decimal(10), Decimal(10)], strict=True)),
+        "Stocks": list(zip(days, [Decimal(0), Decimal(7)], strict=True)),
+        "ETFs": list(zip(days, [Decimal(5), Decimal(0)], strict=True)),
+        "Bond": list(zip(days, [Decimal(0), Decimal(2)], strict=True)),
+        "Unclassified": list(zip(days, [Decimal(1), Decimal(0)], strict=True)),
+    }
+    assert list(balance_series(points)) == ["Cash", "Stocks", "ETFs", "Bond", "Unclassified"]
+
+
+def test_metrics_keep_a_class_sold_out_in_the_period_and_drop_one_never_held():
+    series = {
+        "Cash": [(date(2025, 1, 1), Decimal(0))],
+        "Stocks": [(date(2025, 1, 1), Decimal(7)), (date(2025, 6, 1), Decimal(0))],
+        "ETFs": [(date(2025, 1, 1), Decimal(0)), (date(2025, 9, 1), Decimal(4))],
+        "Bond": [(date(2025, 1, 1), Decimal(3)), (date(2025, 2, 1), Decimal(0))],
+    }
+    assert choose_metrics_to_show(series, date(2025, 3, 1), date(2025, 12, 31)) == [
+        ("Cash", Decimal(0), Decimal(0)),  # always shown
+        ("Stocks", Decimal(0), Decimal(7)),  # sold out in the period
+        ("ETFs", Decimal(4), Decimal(0)),  # bought in the period
+    ]  # Bond: sold out before the period, not shown
+
+
+def test_the_total_is_its_own_line_over_the_stack():
+    """With cash below zero the stack's top edge isn't the total, so the total is drawn."""
+    points = [HistoryPoint(date(2025, 1, 1), Decimal(-200), {"STOCK": Decimal(600)})]
+    series = balance_series(points)
+    total = {"Total": [(p.day, p.total) for p in points]}
+    spec = balance_chart(
+        chart_records(series, date(2025, 1, 1), date(2025, 1, 31)),
+        list(series),
+        chart_records(total, date(2025, 1, 1), date(2025, 1, 31)),
+    ).to_dict()
+    marks = [layer["mark"]["type"] for layer in spec["layer"]]
+    assert marks == ["area", "line"]
+    line_values = spec["layer"][1]["data"]["values"]
+    assert {(v["series"], v["euros"]) for v in line_values} == {("Total", 400.0)}
 
 
 # --- the page ----------------------------------------------------------------------------
@@ -116,11 +188,16 @@ def test_metrics_are_the_latest_balances(household, scope, account_name, institu
     page = AppTest.from_function(_page, default_timeout=10).run()
     page.selectbox[0].select(scope).run()
     assert not page.exception
-    assert _metrics(page) == {
-        "Total": _euros(latest.total),
-        "Cash": _euros(latest.cash),
-        "Positions at cost": _euros(latest.positions_at_cost),
-    }
+    expected = [("Total", _euros(latest.total)), ("Cash", _euros(latest.cash))]
+    by_class = latest.positions_by_asset_class
+    expected += [
+        (label, _euros(by_class[asset_class]))
+        for asset_class, label in (("STOCK", "Stocks"), ("FUND", "ETFs"))
+        if asset_class in by_class
+    ]
+    assert list(_metrics(page).items()) == expected
+    if institution == "n26":
+        assert [label for label, _ in expected] == ["Total", "Cash"]
 
 
 @pytest.mark.db

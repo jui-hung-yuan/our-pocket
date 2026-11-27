@@ -1,5 +1,5 @@
-"""Balances page: total, cash and positions at cost over time, for everything, one
-institution or one account, and each account's total side by side."""
+"""Balances page: total, cash and positions at cost per asset class over time, for
+everything, one institution or one account, and each account's total side by side."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -15,8 +15,14 @@ from our_pocket.services import AccountService, HistoryPoint, MissingBuys
 
 INSTITUTION_NAMES = {"n26": "N26", "trade_republic": "Trade Republic"}
 PERIODS: dict[str, int | None] = {"3 months": 91, "1 year": 365, "All": None}
-# Fixed colours for the balance lines, so total and cash never get two shades of one hue.
-BALANCE_COLOURS = {"total": "#4c4c4c", "cash": "#1f77b4", "positions at cost": "#ff7f0e"}
+ASSET_CLASS_LABELS = {"STOCK": "Stocks", "FUND": "ETFs", "": "Unclassified"}
+# Stack order after cash; other classes follow alphabetically, Unclassified last.
+ASSET_CLASS_ORDER = ("STOCK", "FUND")
+# Fixed colours, so a series keeps its colour whichever classes a scope holds.
+SERIES_COLOURS = {"Cash": "#1f77b4", "Stocks": "#ff7f0e", "ETFs": "#2ca02c"}
+OTHER_COLOURS = ("#9467bd", "#8c564b", "#e377c2", "#bcbd22", "#17becf")
+UNCLASSIFIED_COLOUR = "#7f7f7f"
+TOTAL_COLOUR = "#4c4c4c"
 
 
 @dataclass(frozen=True)
@@ -25,11 +31,53 @@ class Scope:
     institution: str | None = None
 
 
+def label_asset_class(asset_class: str) -> str:
+    return ASSET_CLASS_LABELS.get(asset_class) or asset_class.title()
+
+
+def balance_series(points: Sequence[HistoryPoint]) -> dict[str, list[tuple[date, Decimal]]]:
+    """Cash, then positions at cost per asset class seen anywhere in `points`, each with a
+    value on every point's day (0 while the class isn't held), in stack order."""
+    seen = {c for p in points for c in p.positions_by_asset_class}
+    ordered = sorted(
+        seen,
+        key=lambda c: (
+            c == "",
+            ASSET_CLASS_ORDER.index(c) if c in ASSET_CLASS_ORDER else len(ASSET_CLASS_ORDER),
+            label_asset_class(c),
+        ),
+    )
+    series = {"Cash": [(p.day, p.cash) for p in points]}
+    for asset_class in ordered:
+        series[label_asset_class(asset_class)] = [
+            (p.day, p.positions_by_asset_class.get(asset_class, Decimal(0))) for p in points
+        ]
+    return series
+
+
+def _value_on(values: Sequence[tuple[date, Decimal]], day: date) -> Decimal:
+    earlier = [v for d, v in values if d <= day]
+    return earlier[-1] if earlier else Decimal(0)
+
+
+def choose_metrics_to_show(
+    series: Mapping[str, Sequence[tuple[date, Decimal]]], start: date, end: date
+) -> list[tuple[str, Decimal, Decimal]]:
+    """(name, value on `end`, value on `start`) for Cash and each class held on either day,
+    so a class sold out during the period still shows, at 0."""
+    metrics = []
+    for name, values in series.items():
+        now, before = _value_on(values, end), _value_on(values, start)
+        if name == "Cash" or now or before:
+            metrics.append((name, now, before))
+    return metrics
+
+
 def point_on(points: Sequence[HistoryPoint], day: date) -> HistoryPoint:
     """The balances at the end of `day`: the latest point on or before it, or zero before
     the first entry."""
     earlier = [p for p in points if p.day <= day]
-    return earlier[-1] if earlier else HistoryPoint(day, Decimal(0), Decimal(0))
+    return earlier[-1] if earlier else HistoryPoint(day, Decimal(0), {})
 
 
 def chart_records(
@@ -42,16 +90,18 @@ def chart_records(
         before = [v for d, v in values if d <= start]
         steps = [(start, before[-1] if before else Decimal(0))]
         steps += [(d, v) for d, v in values if start < d <= end]
-        steps.append((end, steps[-1][1]))
+        if steps[-1][0] < end:
+            steps.append((end, steps[-1][1]))
         records += [{"day": d.isoformat(), "series": name, "euros": float(v)} for d, v in steps]
     return records
 
 
-def _chart(records: list[dict[str, Any]], colours: dict[str, str] | None = None) -> alt.Chart:
-    if colours:
-        scale = alt.Scale(domain=list(colours), range=list(colours.values()))
-    else:
-        scale = alt.Scale(scheme="tableau10")
+def _tooltip() -> list[alt.Tooltip]:
+    return [alt.Tooltip("day:T"), alt.Tooltip("series:N"), alt.Tooltip("euros:Q", format=",.2f")]
+
+
+def _chart(records: list[dict[str, Any]]) -> alt.Chart:
+    """One line per series."""
     data = alt.Data(values=records)  # type: ignore[no-untyped-call]  # altair leaves it untyped
     chart: alt.Chart = (
         alt.Chart(data)
@@ -59,15 +109,49 @@ def _chart(records: list[dict[str, Any]], colours: dict[str, str] | None = None)
         .encode(
             x=alt.X("day:T", title=None),
             y=alt.Y("euros:Q", title="EUR"),
-            color=alt.Color("series:N", title=None, sort=None, scale=scale),
-            tooltip=[
-                alt.Tooltip("day:T"),
-                alt.Tooltip("series:N"),
-                alt.Tooltip("euros:Q", format=",.2f"),
-            ],
+            color=alt.Color("series:N", title=None, sort=None, scale=alt.Scale(scheme="tableau10")),
+            tooltip=_tooltip(),
         )
     )
     return chart
+
+
+def _colours(names: Sequence[str]) -> list[str]:
+    others = iter(OTHER_COLOURS * len(names))
+    return [
+        SERIES_COLOURS.get(name)
+        or (UNCLASSIFIED_COLOUR if name == ASSET_CLASS_LABELS[""] else next(others))
+        for name in names
+    ]
+
+
+def balance_chart(
+    records: list[dict[str, Any]], names: Sequence[str], total_records: list[dict[str, Any]]
+) -> alt.LayerChart:
+    """The series stacked in `names` order, with the total as a line over them: with cash
+    below zero, the stack's top edge is not the total."""
+    ranked = [r | {"rank": names.index(r["series"])} for r in records]
+    areas = alt.Data(values=ranked)  # type: ignore[no-untyped-call]  # altair leaves it untyped
+    totals = alt.Data(values=total_records)  # type: ignore[no-untyped-call]
+    scale = alt.Scale(domain=list(names), range=_colours(names))
+    x = alt.X("day:T", title=None)
+    stack = (
+        alt.Chart(areas)
+        .mark_area(interpolate="step-after")
+        .encode(
+            x=x,
+            y=alt.Y("euros:Q", title="EUR", stack="zero"),
+            color=alt.Color("series:N", title=None, sort=list(names), scale=scale),
+            order=alt.Order("rank:Q"),
+            tooltip=_tooltip(),
+        )
+    )
+    total = (
+        alt.Chart(totals)
+        .mark_line(interpolate="step-after", color=TOTAL_COLOUR)
+        .encode(x=x, y=alt.Y("euros:Q"), tooltip=_tooltip())
+    )
+    return alt.LayerChart(layer=[stack, total])
 
 
 def _euros(value: Decimal) -> str:
@@ -105,24 +189,20 @@ def render() -> None:
     days = PERIODS[period or "All"]
     start = points[0].day if days is None else max(points[0].day, end - timedelta(days=days))
     latest, then = points[-1], point_on(points, start)
-    columns = st.columns(3)
-    for column, label, now, before in [
-        (columns[0], "Total", latest.total, then.total),
-        (columns[1], "Cash", latest.cash, then.cash),
-        (columns[2], "Positions at cost", latest.positions_at_cost, then.positions_at_cost),
-    ]:
+    series = balance_series(points)
+    metrics = [("Total", latest.total, then.total), *choose_metrics_to_show(series, start, end)]
+    for column, (label, now, before) in zip(st.columns(len(metrics)), metrics, strict=True):
         column.metric(label, _euros(now), delta=_euros(now - before), border=True)
     st.caption(
-        f"As of {end}; change since {start}. Positions at cost: average cost, fees included "
-        "(market value needs daily prices). Cash leaves out entries whose cash meaning is "
-        "unverified."
+        f"As of {end}; change since {start}. The dark line is the total. Positions at "
+        "cost: average cost, fees included (market value needs daily prices). Cash leaves out "
+        "entries whose cash meaning is unverified."
     )
-    series = {
-        "total": [(p.day, p.total) for p in points],
-        "cash": [(p.day, p.cash) for p in points],
-        "positions at cost": [(p.day, p.positions_at_cost) for p in points],
-    }
-    st.altair_chart(_chart(chart_records(series, start, end), BALANCE_COLOURS), width="stretch")
+    total = {"Total": [(p.day, p.total) for p in points]}
+    chart = balance_chart(
+        chart_records(series, start, end), list(series), chart_records(total, start, end)
+    )
+    st.altair_chart(chart, width="stretch")
 
     members = [a for a in accounts if scope.institution in (None, a.institution)]
     if scope.account_name is not None or len(members) < 2:

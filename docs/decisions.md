@@ -420,3 +420,14 @@ empty, for the next type whose cash meaning can't be read from the export.
 **Why:** reconciling against the app, the ledger's cash was lower by exactly the one `STOCKPERK`
 row's amount. That answers Q1 for every type it named. An account imported with parser 3 is
 reset and imported again (D-027).
+
+### D-036: Positions are split by the export's asset class
+*2026-11-27*
+
+**Chose:** Trade Republic's own `asset_class` per trade, one cost basis per class, so the
+Balances page shows cash, stocks and ETFs at cost. A trade without a class is held as
+"Unclassified"; a sale filed under another class than its buys stops the chart (`MissingBuys`).
+`FUND` is shown as "ETFs", the only funds held.
+**Over:** a stored asset class per ISIN.
+**Why:** every real trade has a class and an ISIN never changes it; a table earns its place
+when a second source disagrees with the export.

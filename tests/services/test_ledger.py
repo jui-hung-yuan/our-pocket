@@ -119,3 +119,29 @@ def test_a_sale_only_uses_buys_in_its_own_account(conn, tr_account, synthetic):
 
 def test_empty_ledger_has_no_history(conn):
     assert LedgerService(conn).history() == []
+
+
+def test_positions_are_split_by_asset_class(conn, trade_republic):
+    last = LedgerService(conn).history()[-1]
+    assert set(last.positions_by_asset_class) == {"STOCK", "FUND"}
+    assert sum(last.positions_by_asset_class.values()) == last.positions_at_cost
+    assert last.total == last.cash + last.positions_at_cost
+
+
+def test_trades_without_an_asset_class_are_unclassified(conn, tr_account, synthetic):
+    isin = next(i for i, quantity in synthetic.holdings.items() if quantity > 0)  # still held
+    rows = [dict(r, asset_class="") if r["symbol"] == isin else r for r in synthetic.rows]
+    _commit(conn, tr_account, SyntheticExport(rows=rows, holdings={}).to_csv_bytes())
+    assert "" in LedgerService(conn).history()[-1].positions_by_asset_class
+
+
+def test_a_sale_under_another_asset_class_is_refused(conn, tr_account, synthetic):
+    """Buys and sales of one ISIN meet in one cost basis only if they share a class."""
+    sold = next(r["symbol"] for r in synthetic.rows if r["type"] == "SELL")
+    rows = [
+        dict(r, asset_class="BOND") if r["type"] == "SELL" and r["symbol"] == sold else r
+        for r in synthetic.rows
+    ]
+    _commit(conn, tr_account, SyntheticExport(rows=rows, holdings={}).to_csv_bytes())
+    with pytest.raises(MissingBuys):
+        LedgerService(conn).history()
