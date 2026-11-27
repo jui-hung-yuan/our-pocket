@@ -14,8 +14,8 @@ from our_pocket.synthetic import n26 as synth_n26
 from our_pocket.synthetic.trade_republic import SyntheticExport
 
 POINTS = [
-    HistoryPoint(date(2025, 1, 15), Decimal("100"), Decimal("0")),
-    HistoryPoint(date(2025, 3, 2), Decimal("40"), Decimal("60")),
+    HistoryPoint(date(2025, 1, 15), Decimal("100"), {}),
+    HistoryPoint(date(2025, 3, 2), Decimal("40"), {"STOCK": Decimal("60")}),
 ]
 
 

@@ -29,7 +29,7 @@ def point_on(points: Sequence[HistoryPoint], day: date) -> HistoryPoint:
     """The balances at the end of `day`: the latest point on or before it, or zero before
     the first entry."""
     earlier = [p for p in points if p.day <= day]
-    return earlier[-1] if earlier else HistoryPoint(day, Decimal(0), Decimal(0))
+    return earlier[-1] if earlier else HistoryPoint(day, Decimal(0), {})
 
 
 def chart_records(
